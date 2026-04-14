@@ -22,47 +22,9 @@ struct SidebarHoverOverlayView: View {
     private let verticalInset: CGFloat = 0
 
     var body: some View {
-        if nookSettings.topBarAddressView {
-            unifiedTopBarSidebar
-        } else if !windowState.isSidebarVisible {
+        if !nookSettings.topBarAddressView && !windowState.isSidebarVisible {
             collapsedSidebarOverlay
         }
-    }
-
-    private var unifiedTopBarSidebar: some View {
-        ZStack(alignment: nookSettings.sidebarPosition == .left ? .leading : .trailing) {
-            if !windowState.isSidebarVisible {
-                Color.clear
-                    .frame(width: hoverManager.triggerWidth)
-                    .contentShape(Rectangle())
-                    .onHover { isIn in
-                        if isIn && !windowState.isSidebarVisible {
-                            withAnimation(.easeInOut(duration: 0.12)) {
-                                hoverManager.isOverlayVisible = true
-                            }
-                        }
-                        NSCursor.arrow.set()
-                    }
-            }
-
-            if shouldShowUnifiedSidebar {
-                sidebarOverlayContent
-                    .overlay(alignment: nookSettings.sidebarPosition == .left ? .trailing : .leading) {
-                        if windowState.isSidebarVisible {
-                            SidebarResizeView()
-                                .frame(maxHeight: .infinity)
-                                .environmentObject(browserManager)
-                                .environment(windowState)
-                                .zIndex(2000)
-                        }
-                    }
-            }
-        }
-        .frame(
-            maxWidth: .infinity,
-            maxHeight: .infinity,
-            alignment: nookSettings.sidebarPosition == .left ? .topLeading : .topTrailing
-        )
     }
 
     private var collapsedSidebarOverlay: some View {
@@ -123,10 +85,6 @@ struct SidebarHoverOverlayView: View {
             .move(edge: nookSettings.sidebarPosition == .left ? .leading : .trailing)
                 .combined(with: .opacity)
         )
-    }
-
-    private var shouldShowUnifiedSidebar: Bool {
-        windowState.isSidebarVisible || hoverManager.isOverlayVisible
     }
 
     private var overlayTopInset: CGFloat {

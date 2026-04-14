@@ -16,6 +16,7 @@ enum TopBarMetrics {
 
 struct TopBarView: View {
     @EnvironmentObject var browserManager: BrowserManager
+    @EnvironmentObject var hoverManager: HoverSidebarManager
     @Environment(BrowserWindowState.self) private var windowState
     @Environment(CommandPalette.self) private var commandPalette
     @Environment(\.nookSettings) var nookSettings
@@ -43,6 +44,10 @@ struct TopBarView: View {
             ZStack {
                 HStack(spacing: 8) {
                     navigationControls
+                        .frame(
+                            width: leftChromeWidth,
+                            alignment: .leading
+                        )
 
                     if hasPiPControl, let tab = currentTab {
                         pipButton(for: tab)
@@ -222,6 +227,20 @@ struct TopBarView: View {
 
     private var shouldShowWindowButtonsInTopBar: Bool {
         true
+    }
+
+    private var leftChromeWidth: CGFloat? {
+        guard nookSettings.topBarAddressView,
+              nookSettings.sidebarPosition == .left,
+              isSidebarPresentedBelowHeader else {
+            return nil
+        }
+
+        return max(windowState.sidebarWidth - 8, 0)
+    }
+
+    private var isSidebarPresentedBelowHeader: Bool {
+        windowState.isSidebarVisible || hoverManager.isOverlayVisible
     }
 
     private var urlBar: some View {

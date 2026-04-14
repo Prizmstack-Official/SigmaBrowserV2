@@ -226,12 +226,14 @@ struct WindowView: View {
                         .environmentObject(browserManager)
                         .environment(windowState)
                         .zIndex(2500)
+
+                    topBarContentRegion
+                        .zIndex(2000)
                 } else {
                     WebsiteLoadingIndicator()
+                    WebsiteView()
+                        .zIndex(2000)
                 }
-                
-                WebsiteView()
-                    .zIndex(2000)
             }
         }
         .overlay(alignment: .topTrailing) {
@@ -257,6 +259,52 @@ struct WindowView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .shadow(color: LexonTheme.shadow(for: colorScheme), radius: 22, x: 0, y: 12)
+    }
+
+    @ViewBuilder
+    private var topBarContentRegion: some View {
+        HStack(spacing: 0) {
+            if shouldShowInlineSidebar && nookSettings.sidebarPosition == .left {
+                inlineSidebar
+            }
+
+            WebsiteView()
+                .zIndex(2000)
+
+            if shouldShowInlineSidebar && nookSettings.sidebarPosition == .right {
+                inlineSidebar
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var inlineSidebar: some View {
+        SpacesSideBarView(
+            showSidebarWindowControls: false,
+            showRailWindowControls: false
+        )
+        .frame(width: windowState.sidebarWidth)
+        .overlay(alignment: nookSettings.sidebarPosition == .left ? .trailing : .leading) {
+            if windowState.isSidebarVisible {
+                SidebarResizeView()
+                    .frame(maxHeight: .infinity)
+                    .environmentObject(browserManager)
+                    .environment(windowState)
+                    .zIndex(2000)
+            }
+        }
+        .environmentObject(browserManager)
+        .environment(windowState)
+        .environment(commandPalette)
+        .environmentObject(browserManager.gradientColorManager)
+        .transition(
+            .move(edge: nookSettings.sidebarPosition == .left ? .leading : .trailing)
+                .combined(with: .opacity)
+        )
+    }
+
+    private var shouldShowInlineSidebar: Bool {
+        nookSettings.topBarAddressView && (windowState.isSidebarVisible || hoverSidebarManager.isOverlayVisible)
     }
 
     private func websiteColumnClipShape(cornerRadius: CGFloat, hasTopBar: Bool) -> AnyShape {
