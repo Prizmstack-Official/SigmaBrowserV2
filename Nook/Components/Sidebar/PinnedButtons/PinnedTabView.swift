@@ -33,6 +33,10 @@ struct PinnedTabView: View {
                         .fill(
                             backgroundColor
                         )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: pinnedTabsConfiguration.cornerRadius, style: .continuous)
+                                .stroke(LexonTheme.border(for: colorScheme), lineWidth: isActive ? 1 : 0.5)
+                        }
                         .animation(.easeInOut(duration: 0.1), value: isHovered)
                         .overlay {
                             if isActive {
@@ -98,7 +102,7 @@ struct PinnedTabView: View {
 
     private var shadowColor: Color {
         if isActive {
-            return colorScheme == .dark ? Color.clear : Color.black.opacity(0.15)
+            return colorScheme == .dark ? Color.clear : Color.black.opacity(0.08)
         } else {
             return Color.clear
         }

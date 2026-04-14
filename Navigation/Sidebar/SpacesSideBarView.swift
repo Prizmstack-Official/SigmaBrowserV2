@@ -17,6 +17,7 @@ struct SpacesSideBarView: View {
     @Environment(WindowRegistry.self) private var windowRegistry
     @Environment(\.nookSettings) var nookSettings
     @Environment(CommandPalette.self) var commandPalette
+    @Environment(\.colorScheme) private var colorScheme
 
     // Space navigation
     @State private var activeSpaceIndex: Int = 0
@@ -24,13 +25,9 @@ struct SpacesSideBarView: View {
 
     // Hover states
     @State private var isSidebarHovered: Bool = false
-    @State private var isMenuButtonHovered = false
-    @State private var isDownloadsHovered = false
-    @State private var showDownloadsMenu = false
-    @State private var animateDownloadsMenu: Bool = false
 
     var body: some View {
-        sidebarContent
+        mainSidebarContent
             .contentShape(Rectangle())
             .onHover { state in
                 print("hovering: \(state)")
@@ -43,18 +40,6 @@ struct SpacesSideBarView: View {
 
     // MARK: - Main Content
 
-    private var sidebarContent: some View {
-        ZStack {
-            if windowState.isSidebarMenuVisible {
-                SidebarMenu()
-                    .transition(menuTransition)
-            } else {
-                mainSidebarContent
-                    .transition(.opacity)
-            }
-        }
-    }
-
     @ObservedObject private var dragSession = NookDragSessionManager.shared
 
     private var mainSidebarContent: some View {
@@ -62,13 +47,11 @@ struct SpacesSideBarView: View {
         let essentialsCount = effectiveProfileId.map { browserManager.tabManager.essentialTabs(for: $0).count } ?? 0
         let shouldAnimate = (windowRegistry.activeWindow?.id == windowState.id) && !browserManager.isTransitioningProfile
 
-        return VStack(spacing: 8) {
-            // Header (window controls, nav buttons, URL bar)
+        return VStack(spacing: 10) {
             SidebarHeader(isSidebarHovered: isSidebarHovered)
                 .environmentObject(browserManager)
                 .environment(windowState)
 
-            // Pinned tabs grid (hidden in incognito)
             if !windowState.isIncognito {
                 PinnedGrid(
                     width: windowState.sidebarContentWidth,
@@ -76,16 +59,14 @@ struct SpacesSideBarView: View {
                 )
                 .environmentObject(browserManager)
                 .environment(windowState)
-                .padding(.horizontal, 8)
+                .padding(.horizontal, SidebarLayoutMetrics.panelInset)
                 .modifier(FallbackDropBelowEssentialsModifier())
             }
 
-            // Spaces page view with draggable spacer
             ZStack {
                 spacesPageView
                     .zIndex(1)
 
-                // Bottom spacer for window dragging
                 Color.clear
                     .contentShape(Rectangle())
                     .conditionalWindowDrag()
@@ -93,36 +74,29 @@ struct SpacesSideBarView: View {
                     .zIndex(0)
             }
 
-            // Downloads menu hover overlay
-            if showDownloadsMenu {
-                downloadsMenuOverlay
-            }
-
-            // Update notification
-            SidebarUpdateNotification(downloadsMenuVisible: showDownloadsMenu)
+            SidebarUpdateNotification(downloadsMenuVisible: false)
                 .environmentObject(browserManager)
                 .environment(windowState)
                 .environment(nookSettings)
-                .padding(.horizontal, 8)
-                .padding(.bottom, 8)
+                .padding(.horizontal, SidebarLayoutMetrics.panelInset)
 
-            // Media controls
             MediaControlsView()
                 .environmentObject(browserManager)
                 .environment(windowState)
-
-            // Bottom bar (menu, spaces indicators, new space)
-            SidebarBottomBar(
-                isMenuButtonHovered: $isMenuButtonHovered,
-                onMenuTap: handleMenuTap,
-                onNewSpaceTap: showSpaceCreationDialog,
-                onMenuHover: handleMenuHover
-            )
-            .environmentObject(browserManager)
-            .environment(windowState)
+                .padding(.horizontal, SidebarLayoutMetrics.panelInset)
+                .padding(.bottom, 2)
         }
-        .padding(.top, 8)
-        .padding(.bottom, 8)
+        .padding(SidebarLayoutMetrics.panelInset)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: LexonTheme.panelCornerRadius, style: .continuous)
+                .fill(LexonTheme.contentPanelFill(for: colorScheme))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: LexonTheme.panelCornerRadius, style: .continuous)
+                .stroke(LexonTheme.border(for: colorScheme), lineWidth: 1)
+        }
+        .padding(SidebarLayoutMetrics.shellPadding)
         .background(
             GeometryReader { geo in
                 Color.clear
@@ -138,6 +112,15 @@ struct SpacesSideBarView: View {
             shouldAnimate ? .easeInOut(duration: 0.18) : nil,
             value: essentialsCount
         )
+        .background(
+            RoundedRectangle(cornerRadius: LexonTheme.outerCornerRadius, style: .continuous)
+                .fill(LexonTheme.sidebarShell(for: colorScheme))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: LexonTheme.outerCornerRadius, style: .continuous)
+                .stroke(LexonTheme.border(for: colorScheme), lineWidth: 1)
+        }
+        .shadow(color: LexonTheme.shadow(for: colorScheme), radius: 22, x: 0, y: 10)
     }
 
     private func updateSidebarScreenFrame(_ geo: GeometryProxy) {
@@ -225,21 +208,6 @@ struct SpacesSideBarView: View {
         .padding()
     }
 
-    // MARK: - Downloads Menu
-
-    private var downloadsMenuOverlay: some View {
-        SidebarMenuHoverDownloads(isVisible: animateDownloadsMenu)
-            .onHover { isHovered in
-                isDownloadsHovered = isHovered
-                if isHovered {
-                    showDownloadsMenu = true
-                    animateDownloadsMenu = true
-                } else {
-                    hideMenuAfterDelay()
-                }
-            }
-    }
-
     // MARK: - Context Menu
 
     private var sidebarContextMenu: some View {
@@ -276,38 +244,6 @@ struct SpacesSideBarView: View {
     }
 
     // MARK: - Helper Functions
-
-    private func handleMenuTap() {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            windowState.isSidebarMenuVisible = true
-            windowState.isSidebarAIChatVisible = false
-            let previousWidth = windowState.sidebarWidth
-            windowState.savedSidebarWidth = previousWidth
-            let newWidth: CGFloat = 400
-            windowState.sidebarWidth = newWidth
-            windowState.sidebarContentWidth = max(newWidth - 16, 0)
-        }
-    }
-
-    private func handleMenuHover(_ isHovered: Bool) {
-        if isHovered {
-            showDownloadsMenu = true
-            animateDownloadsMenu = true
-        } else {
-            hideMenuAfterDelay()
-        }
-    }
-
-    private func hideMenuAfterDelay() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            if !isMenuButtonHovered, !isDownloadsHovered {
-                animateDownloadsMenu = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    showDownloadsMenu = false
-                }
-            }
-        }
-    }
 
     private func handleSpaceIndexChange(_ newIndex: Int, spaces: [Space]) {
         guard newIndex >= 0 && newIndex < spaces.count else {
@@ -439,12 +375,5 @@ struct SpacesSideBarView: View {
             return browserManager.tabManager.spaces.first { $0.id == currentId }
         }
         return browserManager.tabManager.spaces.first
-    }
-
-    // MARK: - Computed Properties
-
-    private var menuTransition: AnyTransition {
-        .move(edge: nookSettings.sidebarPosition == .left ? .leading : .trailing)
-            .combined(with: .opacity)
     }
 }

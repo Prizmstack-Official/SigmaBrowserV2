@@ -14,7 +14,6 @@ struct OnboardingView: View {
     @State private var currentStage: Int = 0
     @State private var selectedMaterial: NSVisualEffectView.Material = .hudWindow
     @State private var selectedBrowser: Browsers = .arc
-    @State private var aiChatEnabled: Bool = true
     @State private var adBlockerEnabled: Bool = true
     @State private var topBarAddressView: Bool = false
     @State private var isLoading: Bool = false
@@ -27,7 +26,7 @@ struct OnboardingView: View {
             Color.white.opacity(0.2)
 
             VStack {
-                StageIndicator(stages: 7, activeStage: currentStage)
+                StageIndicator(stages: 6, activeStage: currentStage)
                 Spacer()
                 stageView
                     .transition(.slideAndBlur)
@@ -76,18 +75,16 @@ struct OnboardingView: View {
             switch currentStage {
             case 0: HelloStage()
             case 1: ImportStage(selectedBrowser: $selectedBrowser)
-            case 2: AiChatStage(aiChatEnabled: $aiChatEnabled)
-            case 3: AdBlockerStage(adBlockerEnabled: $adBlockerEnabled)
-            case 4: URLBarStage(topBarAddressView: $topBarAddressView)
-            case 5: BackgroundStage(selectedMaterial: $selectedMaterial)
-            case 6: FinalStage()
+            case 2: AdBlockerStage(adBlockerEnabled: $adBlockerEnabled)
+            case 3: URLBarStage(topBarAddressView: $topBarAddressView)
+            case 4: BackgroundStage(selectedMaterial: $selectedMaterial)
+            case 5: FinalStage()
             default: EmptyView()
             }
         }
     }
 
     private func applySettings() {
-        nookSettings.showAIAssistant = aiChatEnabled
         nookSettings.blockCrossSiteTracking = adBlockerEnabled
         nookSettings.currentMaterial = selectedMaterial
         nookSettings.topBarAddressView = topBarAddressView
@@ -96,8 +93,8 @@ struct OnboardingView: View {
     }
 
     private func advance() {
-        guard currentStage < 7 else { return }
-        if currentStage == 6 {
+        guard currentStage < 6 else { return }
+        if currentStage == 5 {
             applySettings()
         }
 

@@ -19,7 +19,11 @@ struct NavMenuStyle: MenuStyle {
             .menuIndicator(.hidden)
             .background {
                 RoundedRectangle(cornerRadius: cornerRadius)
-                    .fill(.primary.opacity(backgroundColorOpacity))
+                    .fill(backgroundColor)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .stroke(LexonTheme.border(for: colorScheme), lineWidth: isPressed ? 0 : 0.5)
+                    }
                     .frame(width: size, height: size)
             }
             .opacity(isEnabled ? 1.0 : 0.3)
@@ -55,14 +59,16 @@ struct NavMenuStyle: MenuStyle {
     }
 
     private var cornerRadius: CGFloat {
-        8
+        LexonTheme.controlCornerRadius
     }
 
-    private var backgroundColorOpacity: Double {
+    private var backgroundColor: Color {
         if (isHovering || isPressed) && isEnabled {
-            return colorScheme == .dark ? 0.2 : 0.1
+            return isPressed
+                ? LexonTheme.activeFill(for: colorScheme)
+                : LexonTheme.hoverFill(for: colorScheme)
         } else {
-            return 0.0
+            return Color.clear
         }
     }
 }

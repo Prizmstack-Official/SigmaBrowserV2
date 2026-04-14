@@ -67,8 +67,8 @@ struct CommandPaletteView: View {
         let isDark = colorScheme == .dark
         let isVisible = commandPalette.isVisible
         let textFieldColor: Color = text.isEmpty
-            ? (isDark ? .white.opacity(0.25) : .black.opacity(0.25))
-            : (isDark ? .white.opacity(0.9) : .black.opacity(0.9))
+            ? LexonTheme.tertiaryText(for: colorScheme)
+            : LexonTheme.primaryText(for: colorScheme)
 
         return ZStack {
             Color.clear
@@ -116,7 +116,7 @@ struct CommandPaletteView: View {
                                     TextField(
                                         activeSiteSearch != nil
                                             ? "Search \(activeSiteSearch!.name)..."
-                                            : "Search or enter URL...",
+                                            : "Search or ask a question...",
                                         text: $text
                                     )
                                     .textFieldStyle(.plain)
@@ -238,10 +238,14 @@ struct CommandPaletteView: View {
                         .padding(10)
                         .frame(maxWidth: .infinity)
                         .frame(width: effectiveCommandPaletteWidth)
-                        .background(Color(.windowBackgroundColor).opacity(0.35))
+                        .background(LexonTheme.chromeFill(for: colorScheme))
                         .clipShape(.rect(cornerRadius: 26))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                                .stroke(LexonTheme.border(for: colorScheme), lineWidth: 1)
+                        }
                         .universalGlassEffect(
-                            .regular.tint(Color(.windowBackgroundColor).opacity(0.35)),
+                            .regular.tint(LexonTheme.chromeFill(for: colorScheme)),
                             in: .rect(cornerRadius: 26))
                         .animation(
                             .easeInOut(duration: 0.15),

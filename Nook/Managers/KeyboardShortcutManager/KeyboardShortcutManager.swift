@@ -532,8 +532,6 @@ class KeyboardShortcutManager {
             // NEW: Menu actions that were missing ShortcutAction definitions
             case .toggleSidebar:
                 browserManager.toggleSidebar()
-            case .toggleAIAssistant:
-                browserManager.toggleAISidebar()
             case .togglePictureInPicture:
                 browserManager.requestPiPForCurrentTabInActiveWindow()
             case .copyCurrentURL:

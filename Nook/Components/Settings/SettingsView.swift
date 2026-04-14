@@ -46,16 +46,6 @@ private struct SettingsContent: View {
                 )
             }
             .tag(SettingsTabs.appearance)
-            SettingsPane {
-                SettingsAITab()
-            }
-            .tabItem {
-                Label(
-                    SettingsTabs.ai.name,
-                    systemImage: SettingsTabs.ai.icon
-                )
-            }
-            .tag(SettingsTabs.ai)
 
             SettingsPane {
                 PrivacySettingsView()
@@ -225,8 +215,8 @@ struct GeneralSettingsView: View {
                     }
                     
                     SettingsSectionCard(
-                        title: "Nook",
-                        subtitle: "General Nook settings"
+                        title: "Lexon Browser",
+                        subtitle: "General Lexon Browser settings"
                     ) {
                         VStack(alignment: .leading, spacing: 16) {
                             Toggle(
@@ -236,7 +226,7 @@ struct GeneralSettingsView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Ask Before Quitting")
                                     Text(
-                                        "Warn before quitting Nook"
+                                        "Warn before quitting Lexon Browser"
                                     )
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -345,67 +335,6 @@ struct GeneralSettingsView: View {
                         }
                     }
                     
-                    SettingsSectionCard(
-                        title: "AI Assistant",
-                        subtitle: "Configure AI chat powered by Gemini"
-                    ) {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(alignment: .firstTextBaseline) {
-                                Text("Enable AI Assistant")
-                                Spacer()
-                                Toggle("", isOn: $settings.showAIAssistant)
-                                    .labelsHidden()
-                            }
-                            
-                            if nookSettings.showAIAssistant {
-                                Divider().opacity(0.4)
-                                
-                                HStack(alignment: .firstTextBaseline) {
-                                    Text("Gemini API Key")
-                                    Spacer()
-                                    SecureField("Enter API Key", text: $settings.geminiApiKey)
-                                        .textFieldStyle(.roundedBorder)
-                                        .frame(width: 220)
-                                }
-                                
-                                Text("Get your API key from Google AI Studio")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                
-                                Link("Get API Key →", destination: URL(string: "https://aistudio.google.com/apikey")!)
-                                    .font(.caption)
-                                
-                                Divider().opacity(0.4)
-                                
-                                HStack(alignment: .firstTextBaseline) {
-                                    Text("Model")
-                                    Spacer()
-                                    Picker(
-                                        "Model",
-                                        selection: $settings.geminiModel
-                                    ) {
-                                        ForEach(GeminiModel.allCases) { model in
-                                            VStack(alignment: .leading) {
-                                                Text(model.displayName)
-                                                Text(model.description)
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                            .tag(model)
-                                        }
-                                    }
-                                    .labelsHidden()
-                                    .pickerStyle(.menu)
-                                    .frame(width: 220)
-                                }
-                                
-                                Text(nookSettings.geminiModel.description)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-
                     SettingsSectionCard(
                         title: "Performance",
                         subtitle: "Manage memory by unloading inactive tabs"
@@ -1141,7 +1070,7 @@ struct ShortcutsSettingsView: View {
                     Text("Detect Website Shortcuts")
                         .font(.subheadline)
                         .fontWeight(.medium)
-                    Text("When a website uses the same shortcut, press once for website, twice for Nook")
+                    Text("When a website uses the same shortcut, press once for website, twice for Lexon Browser")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1711,7 +1640,7 @@ struct SettingsHeroCard: View {
             .frame(height: 220)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Nook")
+                Text("Lexon Browser")
                     .font(.system(size: 24, weight: .bold))
                 Text("BROWSER")
                     .font(.caption)

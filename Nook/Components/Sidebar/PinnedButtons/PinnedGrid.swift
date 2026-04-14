@@ -68,12 +68,12 @@ struct PinnedGrid: View {
                     .background {
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
-                            .foregroundStyle(isDragging ? Color.primary.opacity(0.4) : Color.secondary.opacity(0.3))
+                            .foregroundStyle(isDragging ? LexonTheme.strongBorder(for: colorScheme) : LexonTheme.border(for: colorScheme))
                     }
                     .background {
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .fill(isDragging
-                                ? (colorScheme == .dark ? AppColors.pinnedTabHoverLight : AppColors.pinnedTabHoverDark)
+                                ? LexonTheme.hoverFill(for: colorScheme)
                                 : Color.clear
                             )
                     }
@@ -219,7 +219,7 @@ struct PinnedGrid: View {
 
     private var essentialsPlaceholder: some View {
         RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(Color.primary.opacity(0.08))
+            .fill(LexonTheme.hoverFill(for: colorScheme))
             .frame(minWidth: nookSettings.pinnedTabsLook.minWidth, minHeight: nookSettings.pinnedTabsLook.minWidth)
     }
 

@@ -23,7 +23,11 @@ struct NavButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         ZStack {
             RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(.primary.opacity(backgroundColorOpacity(isPressed: configuration.isPressed)))
+                .fill(backgroundColor(isPressed: configuration.isPressed))
+                .overlay {
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .stroke(LexonTheme.border(for: colorScheme), lineWidth: configuration.isPressed ? 0 : 0.5)
+                }
                 .frame(width: size, height: size)
 
             configuration.label
@@ -65,14 +69,16 @@ struct NavButtonStyle: ButtonStyle {
 //    }
     
     private var cornerRadius: CGFloat {
-        8
+        LexonTheme.controlCornerRadius
     }
     
-    private func backgroundColorOpacity(isPressed: Bool) -> Double {
+    private func backgroundColor(isPressed: Bool) -> Color {
         if (isHovering || isPressed) && isEnabled {
-            return colorScheme == .dark ? 0.2 : 0.1
+            return isPressed
+                ? LexonTheme.activeFill(for: colorScheme)
+                : LexonTheme.hoverFill(for: colorScheme)
         } else {
-            return 0.0
+            return Color.clear
         }
     }
 }
@@ -92,7 +98,11 @@ struct RectNavButtonStyle: ButtonStyle {
             .frame(height: height)
             .background {
                 RoundedRectangle(cornerRadius: cornerRadius)
-                    .fill(.primary.opacity(backgroundColorOpacity(isPressed: configuration.isPressed)))
+                    .fill(backgroundColor(isPressed: configuration.isPressed))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .stroke(LexonTheme.border(for: colorScheme), lineWidth: configuration.isPressed ? 0 : 0.5)
+                    }
             }
             .contentShape(.rect)
             .opacity(isEnabled ? 1.0 : 0.3)
@@ -128,14 +138,16 @@ struct RectNavButtonStyle: ButtonStyle {
     }
 
     private var cornerRadius: CGFloat {
-        8
+        LexonTheme.controlCornerRadius
     }
 
-    private func backgroundColorOpacity(isPressed: Bool) -> Double {
+    private func backgroundColor(isPressed: Bool) -> Color {
         if (isHovering || isPressed) && isEnabled {
-            return colorScheme == .dark ? 0.2 : 0.1
+            return isPressed
+                ? LexonTheme.activeFill(for: colorScheme)
+                : LexonTheme.hoverFill(for: colorScheme)
         } else {
-            return 0.0
+            return Color.clear
         }
     }
 }

@@ -9,9 +9,9 @@ import AppKit
 import SwiftUI
 
 enum TopBarMetrics {
-    static let height: CGFloat = 40
-    static let horizontalPadding: CGFloat = 6
-    static let verticalPadding: CGFloat = 5
+    static let height: CGFloat = LexonTheme.topBarHeight
+    static let horizontalPadding: CGFloat = 8
+    static let verticalPadding: CGFloat = 7
 }
 
 struct TopBarView: View {
@@ -19,6 +19,7 @@ struct TopBarView: View {
     @Environment(BrowserWindowState.self) private var windowState
     @Environment(CommandPalette.self) private var commandPalette
     @Environment(\.nookSettings) var nookSettings
+    @Environment(\.colorScheme) private var colorScheme
     @StateObject private var tabWrapper = ObservableTabWrapper()
     @State private var isHovering: Bool = false
     @State private var previousTabId: UUID? = nil
@@ -50,15 +51,13 @@ struct TopBarView: View {
                     urlBar
 
                     Spacer()
-                    
+
                     extensionsView
 
-
-                    if browserManager.nookSettings?.showAIAssistant ?? false
-                        && !windowState.isSidebarAIChatVisible
-                    {
-                        ChatButton(navButtonColor: navButtonColor)
-                    }
+                    BrowserUtilityButtonsView(
+                        navButtonColor: navButtonColor,
+                        spacesWidth: 156
+                    )
 
                 }
 
@@ -193,24 +192,18 @@ struct TopBarView: View {
                 )
             }
 
-            Button(
-                "Reload",
-                systemImage: "arrow.clockwise",
-                action: refreshCurrentTab
-            )
-            .labelStyle(.iconOnly)
-            .buttonStyle(NavButtonStyle())
-            .foregroundStyle(navButtonColor)
-            .animation(
-                shouldAnimateColorChange ? .easeInOut(duration: 0.3) : nil,
-                value: navButtonColor
-            )
         }
     }
 
     private var urlBar: some View {
+        let currentTab = browserManager.currentTab(for: windowState)
+
         HStack(spacing: 8) {
-            if browserManager.currentTab(for: windowState) != nil {
+            Image(systemName: currentTab == nil ? "magnifyingglass" : "globe")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(urlBarTextColor.opacity(0.8))
+
+            if currentTab != nil {
                 Text(displayURL)
                     .font(.system(size: 13, weight: .medium, design: .default))
                     .foregroundStyle(urlBarTextColor)
@@ -221,15 +214,31 @@ struct TopBarView: View {
             } else {
                 EmptyView()
             }
+
+            if currentTab != nil {
+                URLBarActionButtons(
+                    isHovering: isHovering,
+                    foregroundColor: urlBarTextColor,
+                    onCopy: {
+                        browserManager.copyCurrentURL()
+                    },
+                    onRefresh: refreshCurrentTab
+                )
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding(6)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(urlBarBackgroundColor)
         .animation(
             shouldAnimateColorChange ? .easeInOut(duration: 0.3) : nil,
             value: urlBarBackgroundColor
         )
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: LexonTheme.pillCornerRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: LexonTheme.pillCornerRadius, style: .continuous)
+                .stroke(LexonTheme.border(for: colorScheme), lineWidth: 0.5)
+        }
         .onTapGesture {
             if let currentTab = browserManager.currentTab(for: windowState) {
                 commandPalette.openWithCurrentURL(currentTab.url)
@@ -286,134 +295,27 @@ struct TopBarView: View {
 
     // Top bar background color - matches top-right pixel of webview
     private var topBarBackgroundColor: Color {
-        if let currentTab = browserManager.currentTab(for: windowState),
-            let topBarColor = currentTab.topBarBackgroundColor
-        {
-            return Color(nsColor: topBarColor)
-        }
-        // Fallback to page background color if top bar color not available yet
-        if let currentTab = browserManager.currentTab(for: windowState),
-            let pageColor = currentTab.pageBackgroundColor
-        {
-            return Color(nsColor: pageColor)
-        }
-        // Fallback to system theme colors when no tab or color available
-        // This ensures the top bar has a proper background even before page loads
-        return Color(nsColor: .windowBackgroundColor)
+        LexonTheme.chromeFill(for: colorScheme)
     }
 
     // Nav button color - light on dark backgrounds, dark on light backgrounds
     private var navButtonColor: Color {
-        if let currentTab = browserManager.currentTab(for: windowState),
-            let topBarColor = currentTab.topBarBackgroundColor
-        {
-            return topBarColor.isPerceivedDark
-                ? Color.white.opacity(0.9) : Color.black.opacity(0.8)
-        }
-        // Fallback to page background color
-        if let currentTab = browserManager.currentTab(for: windowState),
-            let pageColor = currentTab.pageBackgroundColor
-        {
-            return pageColor.isPerceivedDark
-                ? Color.white.opacity(0.9) : Color.black.opacity(0.8)
-        }
-
-        // Fallback
-        return browserManager.gradientColorManager.isDark
-            ? Color.white.opacity(0.9) : Color.black.opacity(0.8)
+        LexonTheme.primaryText(for: colorScheme)
     }
 
     // URL bar background color - slightly adjusted for visual distinction
     private var urlBarBackgroundColor: Color {
-        if let currentTab = browserManager.currentTab(for: windowState),
-            let topBarColor = currentTab.topBarBackgroundColor
-        {
-            let baseColor = Color(nsColor: topBarColor)
-            if isHovering {
-                // Slightly lighter/darker on hover
-                return adjustColorBrightness(
-                    baseColor,
-                    factor: topBarColor.isPerceivedDark ? 1.15 : 0.95
-                )
-            } else {
-                // Slightly darker/lighter for subtle distinction from top bar
-                //                return adjustColorBrightness(baseColor, factor: topBarColor.isPerceivedDark ? 1.1 : 0.98)
-                return .clear
-            }
-        }
-        // Fallback to page background color
-        if let currentTab = browserManager.currentTab(for: windowState),
-            let pageColor = currentTab.pageBackgroundColor
-        {
-            let baseColor = Color(nsColor: pageColor)
-            if isHovering {
-                // Slightly lighter/darker on hover
-                return adjustColorBrightness(
-                    baseColor,
-                    factor: pageColor.isPerceivedDark ? 1.15 : 0.95
-                )
-            } else {
-                // Slightly darker/lighter for subtle distinction from top bar
-                return adjustColorBrightness(
-                    baseColor,
-                    factor: pageColor.isPerceivedDark ? 1.1 : 0.98
-                )
-            }
-        }
-        // Fallback to original AppColors when no webview color available
-        if isHovering {
-            return browserManager.gradientColorManager.isDark
-                ? AppColors.pinnedTabHoverDark : AppColors.pinnedTabHoverLight
-        } else {
-            return browserManager.gradientColorManager.isDark
-                ? AppColors.pinnedTabIdleDark : AppColors.pinnedTabIdleLight
-        }
+        LexonTheme.fieldFill(for: colorScheme, isHovered: isHovering)
     }
 
     // Text color for URL bar - ensures proper contrast
     private var urlBarTextColor: Color {
-        if let currentTab = browserManager.currentTab(for: windowState),
-            let topBarColor = currentTab.topBarBackgroundColor
-        {
-            return topBarColor.isPerceivedDark
-                ? Color.white.opacity(0.55) : Color.black.opacity(0.8)
-        }
-        // Fallback to page background color
-        if let currentTab = browserManager.currentTab(for: windowState),
-            let pageColor = currentTab.pageBackgroundColor
-        {
-            return pageColor.isPerceivedDark
-                ? Color.white.opacity(0.55) : Color.black.opacity(0.8)
-        }
-        // Fallback to original text color logic
-        return browserManager.gradientColorManager.isDark
-            ? AppColors.spaceTabTextDark : AppColors.spaceTabTextLight
+        LexonTheme.secondaryText(for: colorScheme)
     }
 
     // Bottom border color - lighter when dark, darker when light
     private var bottomBorderColor: Color {
-        if let currentTab = browserManager.currentTab(for: windowState),
-            let topBarColor = currentTab.topBarBackgroundColor
-        {
-            let baseColor = Color(nsColor: topBarColor)
-            // Make lighter if dark, darker if light
-            return adjustColorBrightness(
-                baseColor,
-                factor: topBarColor.isPerceivedDark ? 1.2 : 0.85
-            )
-        }
-        // Fallback to page background color
-        if let currentTab = browserManager.currentTab(for: windowState),
-            let pageColor = currentTab.pageBackgroundColor
-        {
-            let baseColor = Color(nsColor: pageColor)
-            return adjustColorBrightness(
-                baseColor,
-                factor: pageColor.isPerceivedDark ? 1.2 : 0.85
-            )
-        }
-        // Fallback to system separator color
-        return Color(nsColor: .separatorColor)
+        LexonTheme.border(for: colorScheme)
     }
 
     // Helper to adjust color brightness
@@ -523,50 +425,223 @@ struct TopBarView: View {
     }
 }
 
-struct ChatButton: View {
+struct BrowserUtilityButtonsView: View {
     @EnvironmentObject var browserManager: BrowserManager
     @Environment(BrowserWindowState.self) private var windowState
-    @State private var isHovered: Bool = false
-
-    var navButtonColor: Color
-    
-    
-
+    let navButtonColor: Color
+    let spacesWidth: CGFloat
 
     var body: some View {
-        Button {
-            browserManager.toggleAISidebar(for: windowState)
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "message.fill")
-                Text("Chat")
+        HStack(spacing: 6) {
+            if !windowState.isIncognito {
+                SpacesList(axis: .horizontal)
+                    .frame(width: spacesWidth, height: 40)
+                    .environmentObject(browserManager)
+                    .environment(windowState)
+
+                newSpaceButton
             }
-            .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(navButtonColor)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 6)
-            .background(backgroundColor)
-            .clipShape(
-                RoundedRectangle(cornerRadius: 6)
+
+            historyButton
+            downloadsButton
+        }
+    }
+
+    private var historyButton: some View {
+        BrowserUtilityPanelButton(
+            title: "History",
+            systemImage: "clock.arrow.circlepath",
+            navButtonColor: navButtonColor,
+            isActive: windowState.presentedUtilityPanel == .history
+        ) {
+            browserManager.toggleUtilityPanel(.history, for: windowState)
+        }
+    }
+
+    private var downloadsButton: some View {
+        BrowserUtilityPanelButton(
+            title: "Downloads",
+            systemImage: "arrow.down.circle",
+            navButtonColor: navButtonColor,
+            isActive: windowState.presentedUtilityPanel == .downloads
+        ) {
+            browserManager.toggleUtilityPanel(.downloads, for: windowState)
+        }
+        .overlay(alignment: .topTrailing) {
+            DownloadIndicator()
+                .environmentObject(browserManager)
+                .offset(x: 6, y: -6)
+        }
+    }
+
+    private var newSpaceButton: some View {
+        Menu {
+            Button("New Space", systemImage: "square.grid.2x2") {
+                showSpaceCreationDialog()
+            }
+
+            Button("New Folder", systemImage: "folder.badge.plus") {
+                if let currentSpace = browserManager.tabManager.currentSpace {
+                    browserManager.tabManager.createFolder(for: currentSpace.id)
+                }
+            }
+        } label: {
+            BrowserUtilityPanelIcon(
+                title: "New Space",
+                systemImage: "plus",
+                navButtonColor: navButtonColor,
+                isActive: false
             )
-            .contentShape(
-                RoundedRectangle(cornerRadius: 6)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+    }
+
+    private func showSpaceCreationDialog() {
+        browserManager.dialogManager.showDialog(
+            SpaceCreationDialog(
+                onCreate: { name, icon, profileId in
+                    let finalName = name.isEmpty ? "New Space" : name
+                    let finalIcon = icon.isEmpty ? "✨" : icon
+                    let newSpace = browserManager.tabManager.createSpace(
+                        name: finalName,
+                        icon: finalIcon
+                    )
+
+                    if let profileId = profileId {
+                        browserManager.tabManager.assign(spaceId: newSpace.id, toProfile: profileId)
+                    }
+
+                    browserManager.setActiveSpace(newSpace, in: windowState)
+                    browserManager.dialogManager.closeDialog()
+                },
+                onCancel: {
+                    browserManager.dialogManager.closeDialog()
+                }
+            )
+        )
+    }
+}
+
+struct BrowserUtilityPanelButton: View {
+    let title: String
+    let systemImage: String
+    let navButtonColor: Color
+    let isActive: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            BrowserUtilityPanelIcon(
+                title: title,
+                systemImage: systemImage,
+                navButtonColor: navButtonColor,
+                isActive: isActive
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+struct BrowserUtilityPanelIcon: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isHovered: Bool = false
+
+    let title: String
+    let systemImage: String
+    let navButtonColor: Color
+    let isActive: Bool
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(navButtonColor)
+            .frame(width: 32, height: 32)
+            .background(backgroundColor)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .help(title)
         .onHover { state in
             isHovered = state
         }
-
     }
-    
+
     private var backgroundColor: Color {
-        let isDark = browserManager.tabManager.currentTab?.topBarBackgroundColor?.isPerceivedDark == true
-        if isHovered {
-            return isDark ? .white.opacity(0.15) : .black.opacity(0.1)
-        } else {
-            return isDark ? .white.opacity(0.1) : .black.opacity(0.05)
+        if isActive {
+            return LexonTheme.activeFill(for: colorScheme)
+        }
+
+        return isHovered
+            ? LexonTheme.hoverFill(for: colorScheme)
+            : LexonTheme.fieldFill(for: colorScheme)
+    }
+}
+
+struct BrowserUtilityPanelView: View {
+    @EnvironmentObject private var browserManager: BrowserManager
+    @Environment(BrowserWindowState.self) private var windowState
+    @Environment(\.colorScheme) private var colorScheme
+
+    let panel: BrowserUtilityPanel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+
+            Divider()
+
+            Group {
+                switch panel {
+                case .history:
+                    SidebarMenuHistoryTab()
+                        .environmentObject(browserManager)
+                        .environmentObject(browserManager.gradientColorManager)
+                case .downloads:
+                    SidebarMenuDownloadsTab()
+                        .environmentObject(browserManager)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(width: panel == .history ? 430 : 400, height: 520)
+        .background(panelBackground)
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(LexonTheme.border(for: colorScheme), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: LexonTheme.shadow(for: colorScheme), radius: 24, x: 0, y: 16)
+    }
+
+    private var header: some View {
+        HStack(spacing: 10) {
+            Image(systemName: panel == .history ? "clock.arrow.circlepath" : "arrow.down.circle")
+                .font(.system(size: 13, weight: .semibold))
+            Text(panel == .history ? "History" : "Downloads")
+                .font(.system(size: 14, weight: .semibold))
+            Spacer()
+            Button("Close", systemImage: "xmark") {
+                browserManager.dismissUtilityPanel(for: windowState)
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(NavButtonStyle())
+            .foregroundStyle(LexonTheme.primaryText(for: colorScheme))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(LexonTheme.chromeFill(for: colorScheme))
+        .foregroundStyle(LexonTheme.primaryText(for: colorScheme))
+    }
+
+    private var panelBackground: some View {
+        ZStack {
+            SpaceGradientBackgroundView()
+                .environmentObject(browserManager)
+                .environmentObject(browserManager.gradientColorManager)
+                .environment(windowState)
+
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(LexonTheme.sidebarShell(for: colorScheme))
         }
     }
-
 }

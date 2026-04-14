@@ -24,10 +24,7 @@ struct ExtensionPermissionView: View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(spacing: 8) {
                 HStack(spacing: 24) {
-                    Image("nook-logo-1024")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 64, height: 64)
+                    LexonBrandMark(size: 64)
                     Image(systemName: "arrow.left")
                         .font(.system(size: 28, weight: .medium))
                         .foregroundColor(.secondary)
@@ -40,7 +37,7 @@ struct ExtensionPermissionView: View {
                 
             
             }
-            Text("Add the \"\(extensionName)\"extension to Nook?")
+            Text("Add the \"\(extensionName)\"extension to Lexon Browser?")
                 .font(.system(size: 16, weight: .semibold))
             
             Text("It can:")

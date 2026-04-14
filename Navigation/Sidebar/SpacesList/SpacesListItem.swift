@@ -11,6 +11,7 @@ import SwiftUI
 struct SpacesListItem: View {
     @EnvironmentObject var browserManager: BrowserManager
     @Environment(BrowserWindowState.self) private var windowState
+    @Environment(\.colorScheme) private var colorScheme
 
     let space: Space
     let isActive: Bool
@@ -44,14 +45,13 @@ struct SpacesListItem: View {
             }
         } label: {
             spaceIcon
-                .opacity(isActive ? 1.0 : 0.7)
-                .frame(maxWidth: .infinity)
-
+                .opacity(isActive ? 1.0 : 0.85)
+                .frame(width: 40, height: 40)
         }
         .labelStyle(.iconOnly)
-        .buttonStyle(SpaceListItemButtonStyle())
+        .buttonStyle(SpaceListItemButtonStyle(isActive: isActive))
         .layoutPriority(2)
-        .foregroundStyle(Color.primary)
+        .foregroundStyle(LexonTheme.primaryText(for: colorScheme))
         .layoutPriority(isActive ? 1 : 0)
         .opacity(isFaded ? 0.3 : 1.0)
         .onHover { hovering in
@@ -199,11 +199,16 @@ struct SpaceListItemButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) var isEnabled
     @Environment(\.controlSize) var controlSize
     @State private var isHovering: Bool = false
+    let isActive: Bool
     
     func makeBody(configuration: Configuration) -> some View {
         ZStack {
             RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(.primary.opacity(backgroundColorOpacity(isPressed: configuration.isPressed)))
+                .fill(backgroundColor(isPressed: configuration.isPressed))
+                .overlay {
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .stroke(borderColor, lineWidth: isActive ? 1 : 0.5)
+                }
 
             configuration.label
                 .foregroundStyle(.primary)
@@ -222,7 +227,7 @@ struct SpaceListItemButtonStyle: ButtonStyle {
     }
     
     private var size: CGFloat {
-        switch controlSize {
+        let controlDimension: CGFloat = switch controlSize {
         case .mini: 24
         case .small: 28
         case .regular: 32
@@ -230,6 +235,7 @@ struct SpaceListItemButtonStyle: ButtonStyle {
         case .extraLarge: 48
         @unknown default: 32
         }
+        return max(controlDimension, 40)
     }
     
 //    private var iconSize: CGFloat {
@@ -244,14 +250,28 @@ struct SpaceListItemButtonStyle: ButtonStyle {
 //    }
     
     private var cornerRadius: CGFloat {
-        8
+        LexonTheme.controlCornerRadius
     }
     
-    private func backgroundColorOpacity(isPressed: Bool) -> Double {
-        if (isHovering || isPressed) && isEnabled {
-            return colorScheme == .dark ? 0.2 : 0.1
-        } else {
-            return 0.0
+    private var borderColor: Color {
+        isActive
+            ? LexonTheme.strongBorder(for: colorScheme)
+            : LexonTheme.border(for: colorScheme)
+    }
+
+    private func backgroundColor(isPressed: Bool) -> Color {
+        if isActive {
+            return configurationFill(pressed: isPressed)
         }
+        guard (isHovering || isPressed) && isEnabled else { return Color.clear }
+        return isPressed
+            ? LexonTheme.activeFill(for: colorScheme)
+            : LexonTheme.hoverFill(for: colorScheme)
+    }
+
+    private func configurationFill(pressed: Bool) -> Color {
+        pressed
+            ? LexonTheme.selectedFill(for: colorScheme)
+            : LexonTheme.activeFill(for: colorScheme)
     }
 }

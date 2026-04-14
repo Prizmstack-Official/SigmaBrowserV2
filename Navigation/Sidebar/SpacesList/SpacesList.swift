@@ -11,10 +11,15 @@ import SwiftUI
 struct SpacesList: View {
     @EnvironmentObject var browserManager: BrowserManager
     @Environment(BrowserWindowState.self) private var windowState
+    let axis: Axis
     @State private var availableWidth: CGFloat = 0
     @State private var hoveredSpaceId: UUID?
     @State private var showPreview: Bool = false
     @State private var isHoveringList: Bool = false
+
+    init(axis: Axis = .horizontal) {
+        self.axis = axis
+    }
 
     private var layoutMode: SpacesListLayoutMode {
         let spaces = windowState.isIncognito
@@ -34,75 +39,82 @@ struct SpacesList: View {
     }
 
     var body: some View {
+        let isVertical = axis == .vertical
+        let stackLayout = isVertical
+            ? AnyLayout(VStackLayout(alignment: .center, spacing: 8))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 0))
+
         Color.clear
             .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.size.width
+                isVertical ? proxy.size.height : proxy.size.width
             } action: { newWidth in
                 availableWidth = newWidth
             }
-            .overlay{
-                    HStack(spacing: 0) {
-                        ForEach(Array(visibleSpaces.enumerated()), id: \.element.id) { index, space in
-                            SpacesListItem(
-                                space: space,
-                                isActive: windowState.currentSpaceId == space.id,
-                                compact: layoutMode == .compact,
-                                isFaded: false,
-                                onHoverChange: { isHovering in
-                                    if isHovering {
-                                        hoveredSpaceId = space.id
-                                        if showPreview {
-                                        } else {
-                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-                                                if hoveredSpaceId == space.id && isHoveringList {
-                                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                                        showPreview = true
-                                                    }
+            .overlay {
+                stackLayout {
+                    ForEach(Array(visibleSpaces.enumerated()), id: \.element.id) { index, space in
+                        SpacesListItem(
+                            space: space,
+                            isActive: windowState.currentSpaceId == space.id,
+                            compact: !isVertical && layoutMode == .compact,
+                            isFaded: false,
+                            onHoverChange: { isHovering in
+                                guard !isVertical else { return }
+                                if isHovering {
+                                    hoveredSpaceId = space.id
+                                    if showPreview {
+                                    } else {
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                                            if hoveredSpaceId == space.id && isHoveringList {
+                                                withAnimation(.easeInOut(duration: 0.2)) {
+                                                    showPreview = true
                                                 }
                                             }
                                         }
-                                    } else if hoveredSpaceId == space.id {
-                                        hoveredSpaceId = nil
                                     }
+                                } else if hoveredSpaceId == space.id {
+                                    hoveredSpaceId = nil
                                 }
-                            )
-                            .environmentObject(browserManager)
-                            .environment(windowState)
-                            .id(space.id)
-                            .transition(.asymmetric(
-                                insertion: .scale.combined(with: .opacity),
-                                removal: .scale.combined(with: .opacity)
-                            ))
-                            
-                            if index != Array(visibleSpaces.enumerated()).count - 1{
-                                Spacer()
-                                    .frame(minWidth: 1, maxWidth: 8)
-                                    .layoutPriority(-1)
                             }
+                        )
+                        .environmentObject(browserManager)
+                        .environment(windowState)
+                        .id(space.id)
+                        .transition(.asymmetric(
+                            insertion: .scale.combined(with: .opacity),
+                            removal: .scale.combined(with: .opacity)
+                        ))
+
+                        if !isVertical && index != Array(visibleSpaces.enumerated()).count - 1 {
+                            Spacer()
+                                .frame(minWidth: 1, maxWidth: 8)
+                                .layoutPriority(-1)
                         }
                     }
-                    .onHover { hovering in
-                        isHoveringList = hovering
-                        if !hovering {
-                            showPreview = false
-                            hoveredSpaceId = nil
-                        }
+                }
+                .onHover { hovering in
+                    isHoveringList = hovering
+                    if !hovering {
+                        showPreview = false
+                        hoveredSpaceId = nil
                     }
-                    .overlay(alignment: .top) {
-                        if showPreview,
-                           let hoveredId = hoveredSpaceId,
-                           hoveredId != windowState.currentSpaceId,
-                           let hoveredSpace = visibleSpaces.first(where: { $0.id == hoveredId }) {
-                            Text(hoveredSpace.name)
-                                .font(.caption)
-                                .foregroundStyle(previewTextColor)
-                                .opacity(0.7)
-                                .lineLimit(1)
-                                .id(hoveredSpace.id)
-                                .transition(.blur.animation(.smooth(duration: 0.2)))
-                                .offset(y: -20)
-                        }
+                }
+                .overlay(alignment: .top) {
+                    if !isVertical,
+                       showPreview,
+                       let hoveredId = hoveredSpaceId,
+                       hoveredId != windowState.currentSpaceId,
+                       let hoveredSpace = visibleSpaces.first(where: { $0.id == hoveredId }) {
+                        Text(hoveredSpace.name)
+                            .font(.caption)
+                            .foregroundStyle(previewTextColor)
+                            .opacity(0.7)
+                            .lineLimit(1)
+                            .id(hoveredSpace.id)
+                            .transition(.blur.animation(.smooth(duration: 0.2)))
+                            .offset(y: -20)
                     }
+                }
             }
             .animation(.easeInOut(duration: 0.3), value: visibleSpaces.count)
             .animation(.easeInOut(duration: 0.3), value: visibleSpaces.map(\.id))

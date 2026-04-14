@@ -5,52 +5,190 @@ import AppKit
 #endif
 
 struct AppColors {
-    static let textPrimary = Color(nsColor: .labelColor)
-    static let textSecondary = Color(nsColor: .secondaryLabelColor)
-    static let textTertiary = Color(nsColor: .tertiaryLabelColor)
-    static let textQuaternary = Color(nsColor: .quaternaryLabelColor)
+    static let textPrimary = Color(hex: "121316")
+    static let textSecondary = Color(hex: "5D6470")
+    static let textTertiary = Color(hex: "8B92A0")
+    static let textQuaternary = Color(hex: "B0B6C1")
 
-    static let background = Color(nsColor: .windowBackgroundColor)
-    static let backgroundSecondary = Color(nsColor: .underPageBackgroundColor)
+    static let background = Color(hex: "F5F2EB")
+    static let backgroundSecondary = Color(hex: "EBE6DB")
 
-    static let controlBackground = Color(nsColor: .controlBackgroundColor)
-    static let controlBackgroundHover = Color.gray.opacity(0.8)
-    static let controlBackgroundHoverLight = Color.gray.opacity(0.2)
-    static let controlBackgroundActive = Color.white.opacity(0.3)
-    static let activeTab = Color.white.opacity(1.0)
-    static let inactiveTab = Color(nsColor: .controlBackgroundColor).opacity(0.1)
-    
-    
-    
-    static let iconActiveLight = Color.white.opacity(0.6)
-    static let iconDisabledLight = Color.white.opacity(0.25)
-    static let iconHoverLight = Color.white.opacity(0.1)
-    
-    static let iconActiveDark = Color.black.opacity(0.55)
-    static let iconDisabledDark = Color.black.opacity(0.15)
-    static let iconHoverDark = Color.black.opacity(0.1)
-    
-    static let spaceTabActiveLight = Color.white.opacity(0.2)
-    static let spaceTabHoverLight = Color.white.opacity(0.1)
-    static let spaceTabTextLight = Color(hex: "EAE6DC")
-    
-    static let spaceTabActiveDark = Color.white
+    static let controlBackground = Color.white.opacity(0.65)
+    static let controlBackgroundHover = Color.black.opacity(0.14)
+    static let controlBackgroundHoverLight = Color.white.opacity(0.12)
+    static let controlBackgroundActive = Color.black.opacity(0.08)
+    static let activeTab = Color.white.opacity(0.9)
+    static let inactiveTab = Color.black.opacity(0.05)
+
+    static let iconActiveLight = Color.white.opacity(0.88)
+    static let iconDisabledLight = Color.white.opacity(0.34)
+    static let iconHoverLight = Color.white.opacity(0.12)
+
+    static let iconActiveDark = Color(hex: "262A33")
+    static let iconDisabledDark = Color(hex: "8F96A3")
+    static let iconHoverDark = Color.black.opacity(0.06)
+
+    static let spaceTabActiveLight = Color.white.opacity(0.18)
+    static let spaceTabHoverLight = Color.white.opacity(0.08)
+    static let spaceTabTextLight = Color(hex: "F3F5F8")
+
+    static let spaceTabActiveDark = Color.white.opacity(0.92)
     static let spaceTabHoverDark = Color.black.opacity(0.05)
-    static let spaceTabTextDark = Color(hex: "001E21")
-    
-    
-    static let pinnedTabActiveLight = Color.white.opacity(0.2)
-    static let pinnedTabHoverLight = Color.white.opacity(0.15)
-    static let pinnedTabIdleLight = Color.white.opacity(0.1)
-    
-    static let pinnedTabActiveDark = Color.white
-    static let pinnedTabHoverDark = Color.black.opacity(0.1)
-    static let pinnedTabIdleDark = Color.black.opacity(0.05)
-    
-    
-    static let sidebarTextLight = Color.white.opacity(0.5)
-    static let sidebarTextDark = Color.black.opacity(0.5)
-    
+    static let spaceTabTextDark = Color(hex: "1A1E27")
+
+    static let pinnedTabActiveLight = Color.white.opacity(0.16)
+    static let pinnedTabHoverLight = Color.white.opacity(0.11)
+    static let pinnedTabIdleLight = Color.white.opacity(0.06)
+
+    static let pinnedTabActiveDark = Color.white.opacity(0.94)
+    static let pinnedTabHoverDark = Color.black.opacity(0.06)
+    static let pinnedTabIdleDark = Color.black.opacity(0.03)
+
+    static let sidebarTextLight = Color.white.opacity(0.68)
+    static let sidebarTextDark = Color.black.opacity(0.58)
+}
+
+enum LexonTheme {
+    static let sidebarRailWidth: CGFloat = 64
+    static let outerCornerRadius: CGFloat = 26
+    static let panelCornerRadius: CGFloat = 20
+    static let pillCornerRadius: CGFloat = 14
+    static let controlCornerRadius: CGFloat = 12
+    static let topBarHeight: CGFloat = 44
+    static let thinBorder: CGFloat = 1
+
+    static func windowWash(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color(hex: "0D0E10").opacity(0.92)
+            : Color(hex: "F4F1E8").opacity(0.94)
+    }
+
+    static func windowGradientTint(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color(hex: "15181E").opacity(0.55)
+            : Color(hex: "FFFFFF").opacity(0.46)
+    }
+
+    static func sidebarShell(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color(hex: "14161A").opacity(0.84)
+            : Color(hex: "FBF9F5").opacity(0.88)
+    }
+
+    static func railFill(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.045)
+            : Color.black.opacity(0.035)
+    }
+
+    static func contentPanelFill(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.045)
+            : Color.white.opacity(0.74)
+    }
+
+    static func chromeFill(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color(hex: "171A1F").opacity(0.9)
+            : Color(hex: "FCFBF8").opacity(0.94)
+    }
+
+    static func fieldFill(for colorScheme: ColorScheme, isHovered: Bool = false) -> Color {
+        let base = colorScheme == .dark
+            ? Color.white.opacity(isHovered ? 0.12 : 0.08)
+            : Color.black.opacity(isHovered ? 0.07 : 0.045)
+        return base
+    }
+
+    static func activeFill(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.12)
+            : Color.black.opacity(0.07)
+    }
+
+    static func hoverFill(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.07)
+            : Color.black.opacity(0.045)
+    }
+
+    static func selectedFill(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.16)
+            : Color.black.opacity(0.085)
+    }
+
+    static func border(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.08)
+            : Color.black.opacity(0.08)
+    }
+
+    static func strongBorder(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.12)
+            : Color.black.opacity(0.12)
+    }
+
+    static func shadow(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color.black.opacity(0.32)
+            : Color.black.opacity(0.08)
+    }
+
+    static func primaryText(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark ? Color(hex: "F5F7FA") : Color(hex: "17191F")
+    }
+
+    static func secondaryText(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark ? Color.white.opacity(0.62) : Color.black.opacity(0.52)
+    }
+
+    static func tertiaryText(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark ? Color.white.opacity(0.42) : Color.black.opacity(0.36)
+    }
+}
+
+enum SidebarLayoutMetrics {
+    static let shellPadding: CGFloat = 8
+    static let shellSpacing: CGFloat = 12
+    static let panelInset: CGFloat = 8
+
+    static func contentWidth(for sidebarWidth: CGFloat) -> CGFloat {
+        let availableWidth = sidebarWidth
+            - (shellPadding * 2)
+            - SidebarLayoutMetrics.shellSpacing
+            - LexonTheme.sidebarRailWidth
+            - (panelInset * 2)
+        return max(availableWidth, 0)
+    }
+}
+
+struct LexonBrandMark: View {
+    var size: CGFloat = 64
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [Color(hex: "CFC8F8"), Color(hex: "E9E7FF")],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            Text("L")
+                .font(.system(size: size * 0.44, weight: .bold, design: .rounded))
+                .foregroundStyle(Color(hex: "2B2647"))
+        }
+        .frame(width: size, height: size)
+        .overlay {
+            RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+                .stroke(Color.white.opacity(0.45), lineWidth: 1)
+        }
+        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 6)
+    }
 }
 
 extension Color {

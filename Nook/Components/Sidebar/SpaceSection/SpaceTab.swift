@@ -57,7 +57,11 @@ struct SpaceTab: View {
                     }) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 6)
-                                .fill(isSpeakerHovering ? (isCurrentTab ? AppColors.controlBackgroundHoverLight : AppColors.controlBackgroundActive) : AppColors.controlBackgroundHoverLight.opacity(0))
+                                .fill(
+                                    isSpeakerHovering
+                                        ? (isCurrentTab ? LexonTheme.activeFill(for: colorScheme) : LexonTheme.hoverFill(for: colorScheme))
+                                        : Color.clear
+                                )
                                 .frame(width: 22, height: 22)
                                 .animation(.easeInOut(duration: 0.05), value: isSpeakerHovering)
                             Image(systemName: tab.isAudioMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
@@ -110,7 +114,11 @@ struct SpaceTab: View {
                             .font(.system(size: 12, weight: .heavy))
                             .foregroundColor(textTab)
                             .frame(width: 24,height: 24)
-                            .background(isCloseHovering ? (isCurrentTab ? AppColors.controlBackgroundHoverLight : AppColors.controlBackgroundActive) : Color.clear)
+                            .background(
+                                isCloseHovering
+                                    ? (isCurrentTab ? LexonTheme.activeFill(for: colorScheme) : LexonTheme.hoverFill(for: colorScheme))
+                                    : Color.clear
+                            )
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -310,20 +318,22 @@ struct SpaceTab: View {
         return browserManager.currentTab(for: windowState)?.id == tab.id
     }
     private var shadowColor: Color {
-        return colorScheme == .dark ? Color.clear : Color.black.opacity(0.15)
+        return colorScheme == .dark ? Color.clear : Color.black.opacity(0.08)
     }
 
     private var backgroundColor: Color {
         if isCurrentTab {
             return colorScheme == .dark ? AppColors.spaceTabActiveLight : AppColors.spaceTabActiveDark
         } else if isHovering {
-            return colorScheme == .dark ? AppColors.spaceTabHoverLight : AppColors.spaceTabHoverDark
+            return LexonTheme.hoverFill(for: colorScheme)
         } else {
             return Color.clear
         }
     }
     private var textTab: Color {
-        return colorScheme == .dark ? AppColors.spaceTabTextLight : AppColors.spaceTabTextDark
+        return isCurrentTab
+            ? LexonTheme.primaryText(for: colorScheme)
+            : LexonTheme.secondaryText(for: colorScheme)
     }
 
 }

@@ -15,6 +15,7 @@ struct SidebarHoverOverlayView: View {
     @Environment(BrowserWindowState.self) private var windowState
     @Environment(CommandPalette.self) private var commandPalette
     @Environment(\.nookSettings) var nookSettings
+    @Environment(\.colorScheme) private var colorScheme
 
     private let cornerRadius: CGFloat = 12
     private let horizontalInset: CGFloat = 7
@@ -46,17 +47,15 @@ struct SidebarHoverOverlayView: View {
                         .environmentObject(browserManager.gradientColorManager)
                         .frame(maxHeight: .infinity)
                         .background{
-                            
-                            
                             SpaceGradientBackgroundView()
                                 .environmentObject(browserManager)
                                 .environmentObject(browserManager.gradientColorManager)
                                 .environment(windowState)
                                 .clipShape(.rect(cornerRadius: cornerRadius))
-                            
-                                Rectangle()
-                                    .fill(Color.clear)
-                                    .universalGlassEffect(.regular.tint(Color(.windowBackgroundColor).opacity(0.35)), in: .rect(cornerRadius: cornerRadius))
+
+                            Rectangle()
+                                .fill(LexonTheme.sidebarShell(for: colorScheme))
+                                .universalGlassEffect(.regular.tint(LexonTheme.sidebarShell(for: colorScheme)), in: .rect(cornerRadius: cornerRadius))
                         }
                         .alwaysArrowCursor()
                         .padding(nookSettings.sidebarPosition == .left ? .leading : .trailing, horizontalInset)

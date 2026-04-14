@@ -17,10 +17,10 @@ struct SettingsGeneralTab: View {
         HStack(alignment: .top) {
             MemberCard()
             Form {
-                Toggle("Warn before quitting Nook", isOn: $settings.askBeforeQuit)
-                Toggle("Automatically update Nook", isOn: .constant(true))
+                Toggle("Warn before quitting Lexon Browser", isOn: $settings.askBeforeQuit)
+                Toggle("Automatically update Lexon Browser", isOn: .constant(true))
                     .disabled(true)
-                Toggle("Nook's Ad Blocker", isOn: .constant(false))
+                Toggle("Lexon Browser Ad Blocker", isOn: .constant(false))
                     .disabled(true)
 
                 Section(header: Text("Search")) {

@@ -82,7 +82,6 @@ enum ShortcutAction: String, CaseIterable, Hashable, Codable {
 
     // NEW: Menu items in NookCommands that were missing ShortcutAction definitions
     case toggleSidebar = "toggle_sidebar"                      // Cmd+S
-    case toggleAIAssistant = "toggle_ai_assistant"             // Cmd+Shift+A
     case togglePictureInPicture = "toggle_pip"                 // Cmd+Shift+P
     case copyCurrentURL = "copy_current_url"                   // Cmd+Shift+C
     case hardReload = "hard_reload"                            // Cmd+Shift+R
@@ -130,7 +129,6 @@ enum ShortcutAction: String, CaseIterable, Hashable, Codable {
         case .zoomOut: return "Zoom Out"
         case .actualSize: return "Actual Size"
         case .toggleSidebar: return "Toggle Sidebar"
-        case .toggleAIAssistant: return "Toggle AI Assistant"
         case .togglePictureInPicture: return "Toggle Picture in Picture"
         case .copyCurrentURL: return "Copy Current URL"
         case .hardReload: return "Hard Reload"
@@ -159,8 +157,6 @@ enum ShortcutAction: String, CaseIterable, Hashable, Codable {
             return .tools
         case .toggleSidebar:
             return .window
-        case .toggleAIAssistant:
-            return .tools
         case .togglePictureInPicture:
             return .tools
         case .copyCurrentURL:
@@ -346,7 +342,6 @@ extension KeyboardShortcut {
 
             // NEW: Menu shortcuts that were missing from ShortcutAction
             KeyboardShortcut(action: .toggleSidebar, keyCombination: KeyCombination(key: "s", modifiers: [.command])),
-            KeyboardShortcut(action: .toggleAIAssistant, keyCombination: KeyCombination(key: "a", modifiers: [.command, .shift])),
             KeyboardShortcut(action: .togglePictureInPicture, keyCombination: KeyCombination(key: "p", modifiers: [.command, .shift])),
             KeyboardShortcut(action: .copyCurrentURL, keyCombination: KeyCombination(key: "c", modifiers: [.command, .shift])),
             KeyboardShortcut(action: .hardReload, keyCombination: KeyCombination(key: "r", modifiers: [.command, .shift])),

@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 
 struct SidebarMenuDownloadsTab: View {
     @EnvironmentObject var browserManager: BrowserManager
+    @Environment(\.colorScheme) private var colorScheme
     @State private var isHovering: Bool = false
     @State private var text: String = ""
     @FocusState private var isSearchFocused: Bool
@@ -31,12 +32,12 @@ struct SidebarMenuDownloadsTab: View {
             HStack {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.3))
+                    .foregroundStyle(LexonTheme.secondaryText(for: colorScheme))
                     .frame(width: 16, height: 16)
                 TextField("Search downloads...", text: $text)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(LexonTheme.secondaryText(for: colorScheme))
                     .focused($isSearchFocused)
 
                 if !text.isEmpty {
@@ -54,7 +55,11 @@ struct SidebarMenuDownloadsTab: View {
             .padding(.vertical, 10)
             .frame(height: 38)
             .frame(maxWidth: .infinity)
-            .background(isHovering ? .white.opacity(0.08) : .white.opacity(0.05))
+            .background(
+                isHovering
+                    ? LexonTheme.hoverFill(for: colorScheme)
+                    : LexonTheme.fieldFill(for: colorScheme)
+            )
             .animation(.easeInOut(duration: 0.1), value: isHovering)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .onHover { state in
@@ -93,6 +98,7 @@ struct SidebarMenuDownloadsTab: View {
 }
 
 struct DownloadItem: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var isHovering: Bool = false
     @State private var isIconHovered: Bool = false
     var download: Download
@@ -115,13 +121,13 @@ struct DownloadItem: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(download.suggestedFilename)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LexonTheme.primaryText(for: colorScheme).opacity(0.85))
                     .lineLimit(1)
                     .truncationMode(.tail)
 
                 Text(download.originalURL.absoluteString)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(LexonTheme.secondaryText(for: colorScheme))
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
@@ -146,11 +152,11 @@ struct DownloadItem: View {
                     Button {} label: {
                         Image(systemName: "ellipsis")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.6))
+                            .foregroundColor(LexonTheme.secondaryText(for: colorScheme))
                             .frame(width: 16, height: 16)
                     }
                     .padding(8)
-                    .background(isIconHovered ? .white.opacity(0.1) : .clear)
+                    .background(isIconHovered ? LexonTheme.hoverFill(for: colorScheme) : .clear)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .buttonStyle(PlainButtonStyle())
                 }
@@ -163,7 +169,7 @@ struct DownloadItem: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
-        .background(isHovering ? .white.opacity(0.2) : .clear)
+        .background(isHovering ? LexonTheme.hoverFill(for: colorScheme) : .clear)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .animation(.easeInOut(duration: 0.1), value: isHovering)
         .onHover { state in

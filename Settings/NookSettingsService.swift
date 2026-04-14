@@ -22,19 +22,6 @@ class NookSettingsService {
     private let askBeforeQuitKey = "settings.askBeforeQuit"
     private let sidebarPositionKey = "settings.sidebarPosition"
     private let topBarAddressViewKey = "settings.topBarAddressView"
-
-    private let geminiApiKeyKey = "settings.geminiApiKey"
-    private let geminiModelKey = "settings.geminiModel"
-    private let showAIAssistantKey = "settings.showAIAssistant"
-    private let aiProviderKey = "settings.aiProvider"
-    private let openRouterApiKeyKey = "settings.openRouterApiKey"
-    private let openRouterModelKey = "settings.openRouterModel"
-    private let ollamaEndpointKey = "settings.ollamaEndpoint"
-    private let ollamaModelKey = "settings.ollamaModel"
-    private let webSearchEnabledKey = "settings.webSearchEnabled"
-    private let webSearchEngineKey = "settings.webSearchEngine"
-    private let webSearchMaxResultsKey = "settings.webSearchMaxResults"
-    private let webSearchContextSizeKey = "settings.webSearchContextSize"
     private let showLinkStatusBarKey = "settings.showLinkStatusBar"
     private let pinnedTabsLookKey = "settings.pinnedTabsLook"
     private let siteSearchEntriesKey = "settings.siteSearchEntries"
@@ -122,79 +109,6 @@ class NookSettingsService {
             userDefaults.set(debugToggleUpdateNotification, forKey: debugToggleUpdateNotificationKey)
         }
     }
-
-
-    var geminiApiKey: String {
-        didSet {
-            userDefaults.set(geminiApiKey, forKey: geminiApiKeyKey)
-        }
-    }
-
-    var geminiModel: GeminiModel {
-        didSet {
-            userDefaults.set(geminiModel.rawValue, forKey: geminiModelKey)
-        }
-    }
-
-    var showAIAssistant: Bool {
-        didSet {
-            userDefaults.set(showAIAssistant, forKey: showAIAssistantKey)
-        }
-    }
-
-    var aiProvider: AIProvider {
-        didSet {
-            userDefaults.set(aiProvider.rawValue, forKey: aiProviderKey)
-        }
-    }
-
-    var openRouterApiKey: String {
-        didSet {
-            userDefaults.set(openRouterApiKey, forKey: openRouterApiKeyKey)
-        }
-    }
-
-    var openRouterModel: OpenRouterModel {
-        didSet {
-            userDefaults.set(openRouterModel.rawValue, forKey: openRouterModelKey)
-        }
-    }
-
-    var ollamaEndpoint: String {
-        didSet {
-            userDefaults.set(ollamaEndpoint, forKey: ollamaEndpointKey)
-        }
-    }
-
-    var ollamaModel: String {
-        didSet {
-            userDefaults.set(ollamaModel, forKey: ollamaModelKey)
-        }
-    }
-
-    var webSearchEnabled: Bool {
-        didSet {
-            userDefaults.set(webSearchEnabled, forKey: webSearchEnabledKey)
-        }
-    }
-
-    var webSearchEngine: String {
-        didSet {
-            userDefaults.set(webSearchEngine, forKey: webSearchEngineKey)
-        }
-    }
-
-    var webSearchMaxResults: Int {
-        didSet {
-            userDefaults.set(webSearchMaxResults, forKey: webSearchMaxResultsKey)
-        }
-    }
-
-    var webSearchContextSize: String {
-        didSet {
-            userDefaults.set(webSearchContextSize, forKey: webSearchContextSizeKey)
-        }
-    }
     
     var showLinkStatusBar: Bool {
         didSet {
@@ -244,19 +158,6 @@ class NookSettingsService {
             askBeforeQuitKey: true,
             sidebarPositionKey: SidebarPosition.left.rawValue,
             topBarAddressViewKey: false,
-
-            geminiApiKeyKey: "",
-            geminiModelKey: GeminiModel.flash.rawValue,
-            showAIAssistantKey: true,
-            aiProviderKey: AIProvider.gemini.rawValue,
-            openRouterApiKeyKey: "",
-            openRouterModelKey: OpenRouterModel.gpt4o.rawValue,
-            ollamaEndpointKey: "http://localhost:11434",
-            ollamaModelKey: "llama3",
-            webSearchEnabledKey: false,
-            webSearchEngineKey: "auto",
-            webSearchMaxResultsKey: 5,
-            webSearchContextSizeKey: "medium",
             showLinkStatusBarKey: true,
             pinnedTabsLookKey: "large",
             didFinishOnboardingKey: false,
@@ -284,18 +185,6 @@ class NookSettingsService {
         self.askBeforeQuit = userDefaults.bool(forKey: askBeforeQuitKey)
         self.sidebarPosition = SidebarPosition(rawValue: userDefaults.string(forKey: sidebarPositionKey) ?? "left") ?? SidebarPosition.left
         self.topBarAddressView = userDefaults.bool(forKey: topBarAddressViewKey)
-        self.geminiApiKey = userDefaults.string(forKey: geminiApiKeyKey) ?? ""
-        self.geminiModel = GeminiModel(rawValue: userDefaults.string(forKey: geminiModelKey) ?? GeminiModel.flash.rawValue) ?? .flash
-        self.showAIAssistant = userDefaults.bool(forKey: showAIAssistantKey)
-        self.aiProvider = AIProvider(rawValue: userDefaults.string(forKey: aiProviderKey) ?? AIProvider.gemini.rawValue) ?? .gemini
-        self.openRouterApiKey = userDefaults.string(forKey: openRouterApiKeyKey) ?? ""
-        self.openRouterModel = OpenRouterModel(rawValue: userDefaults.string(forKey: openRouterModelKey) ?? OpenRouterModel.gpt4o.rawValue) ?? .gpt4o
-        self.ollamaEndpoint = userDefaults.string(forKey: ollamaEndpointKey) ?? "http://localhost:11434"
-        self.ollamaModel = userDefaults.string(forKey: ollamaModelKey) ?? "llama3"
-        self.webSearchEnabled = userDefaults.bool(forKey: webSearchEnabledKey)
-        self.webSearchEngine = userDefaults.string(forKey: webSearchEngineKey) ?? "auto"
-        self.webSearchMaxResults = userDefaults.integer(forKey: webSearchMaxResultsKey)
-        self.webSearchContextSize = userDefaults.string(forKey: webSearchContextSizeKey) ?? "medium"
         self.showLinkStatusBar = userDefaults.bool(forKey: showLinkStatusBarKey)
         self.pinnedTabsLook = PinnedTabsConfiguration(rawValue: userDefaults.string(forKey: pinnedTabsLookKey) ?? "large") ?? .large
         self.tabLayout = TabLayout(rawValue: userDefaults.string(forKey: tabLayoutKey) ?? TabLayout.sidebar.rawValue) ?? .sidebar
@@ -306,91 +195,6 @@ class NookSettingsService {
             self.siteSearchEntries = decoded
         } else {
             self.siteSearchEntries = SiteSearchEntry.defaultSites
-        }
-    }
-}
-
-// MARK: - AI Provider
-
-public enum AIProvider: String, CaseIterable, Identifiable {
-    case gemini = "gemini"
-    case openRouter = "openrouter"
-    case ollama = "ollama"
-    
-    public var id: String { rawValue }
-    
-    var displayName: String {
-        switch self {
-        case .gemini: return "Google Gemini"
-        case .openRouter: return "OpenRouter"
-        case .ollama: return "Ollama (Local)"
-        }
-    }
-    
-    var isRecommended: Bool {
-        return false
-    }
-}
-
-// MARK: - Gemini Model
-
-public enum GeminiModel: String, CaseIterable, Identifiable {
-    case flash = "gemini-flash-latest"
-    case pro = "gemini-2.5-pro"
-    
-    public var id: String { rawValue }
-    
-    var displayName: String {
-        switch self {
-        case .flash: return "Gemini Flash"
-        case .pro: return "Gemini 2.5 Pro"
-        }
-    }
-    
-    var description: String {
-        switch self {
-        case .flash: return "Fast responses, great for quick questions"
-        case .pro: return "Most capable model, best for complex analysis"
-        }
-    }
-    
-    var icon: String {
-        switch self {
-        case .flash: return "bolt.fill"
-        case .pro: return "star.fill"
-        }
-    }
-}
-
-// MARK: - OpenRouter Model
-
-public enum OpenRouterModel: String, CaseIterable, Identifiable {
-    case deepseekChatV31 = "deepseek/deepseek-chat-v3.1:free"
-    case glm45air = "z-ai/glm-4.5-air:free"
-    case llama4scout = "meta-llama/llama-4-scout:free"
-    case llama4maverick = "meta-llama/llama-4-maverick:free"
-    case grok4fast = "openai/grok-4-fast"
-    case gpt4o = "openai/gpt-4o"
-    case claudesonnet45 = "anthropic/claude-sonnet-4.5"
-    case llama370b = "meta-llama/llama-3-70b-instruct"
-    case gpt5mini = "openai/gpt-5-mini"
-    case gpt5 = "openai/gpt-5"
-
-    
-    public var id: String { rawValue }
-    
-    var displayName: String {
-        switch self {
-        case .deepseekChatV31: return "DeepSeek Chat V3.1 (Free)"
-        case .glm45air: return "GLM 4.5 Air (Free)"
-        case .llama4scout: return "Llama 4 Scout (Free)"
-        case .llama4maverick: return "Llama 4 Maverick (Free)"
-        case .grok4fast: return "Grok 4 Fast"
-        case .gpt4o: return "GPT-4o"
-        case .claudesonnet45: return "Claude Sonnet 4.5"
-        case .llama370b: return "Llama 3 70B"
-        case .gpt5mini: return "GPT-5 Mini"
-        case .gpt5: return "GPT-5"
         }
     }
 }

@@ -211,13 +211,13 @@ struct SpaceTitle: View {
 
     private var hoverColor: Color {
         if isHovering || isDropHovering {
-            return colorScheme == .dark ? AppColors.spaceTabHoverLight : AppColors.spaceTabHoverDark
+            return LexonTheme.hoverFill(for: colorScheme)
         } else {
             return .clear
         }
     }
     private var textColor: Color {
-        return colorScheme == .dark ? AppColors.sidebarTextLight : AppColors.sidebarTextDark
+        LexonTheme.secondaryText(for: colorScheme)
     }
 
     private var canDeleteSpace: Bool {

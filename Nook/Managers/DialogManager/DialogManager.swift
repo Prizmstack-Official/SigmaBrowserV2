@@ -51,16 +51,8 @@ class DialogManager {
                 },
                 content: {
                     VStack(alignment: .leading, spacing: 20) {
-                        Image("nook-logo-1024")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 26, height: 26)
-                            .shadow(
-                                color: AppColors.textPrimary.opacity(0.3),
-                                radius: 0.5,
-                                y: 1
-                            )
-                        Text("Are you sure you want to quit Nook?")
+                        LexonBrandMark(size: 26)
+                        Text("Are you sure you want to quit Lexon Browser?")
                             .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(AppColors.textPrimary)
                         Text("You may lose unsaved work in your tabs.")
@@ -137,6 +129,7 @@ extension DialogPresentable {
 
 struct DialogCard<Content: View>: View {
     private let content: Content
+    @Environment(\.colorScheme) private var colorScheme
 
     init(@ViewBuilder content: () -> Content) {
         self.content = content()
@@ -146,13 +139,13 @@ struct DialogCard<Content: View>: View {
         content
             .padding(16)
             .frame(maxWidth: 500, alignment: .leading)
-            .background(BlurEffectView(material: .headerView, state: .active))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .background(LexonTheme.chromeFill(for: colorScheme))
+            .clipShape(RoundedRectangle(cornerRadius: LexonTheme.panelCornerRadius))
             .overlay {
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(.white.opacity(0.25), lineWidth: 1)
+                RoundedRectangle(cornerRadius: LexonTheme.panelCornerRadius)
+                    .stroke(LexonTheme.border(for: colorScheme), lineWidth: 1)
             }
-            .shadow(color: .black, radius: 1, y: 0)
+            .shadow(color: LexonTheme.shadow(for: colorScheme), radius: 18, y: 10)
     }
 }
 

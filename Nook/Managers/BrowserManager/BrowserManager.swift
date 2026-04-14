@@ -408,8 +408,6 @@ class BrowserManager: ObservableObject {
     var boostsManager = BoostsManager()
     var keyboardShortcutManager: KeyboardShortcutManager?
     weak var nookSettings: NookSettingsService?
-    weak var aiService: AIService?
-    weak var aiConfigService: AIConfigService?
 
     var externalMiniWindowManager = ExternalMiniWindowManager()
     @Published var peekManager = PeekManager()
@@ -788,17 +786,17 @@ class BrowserManager: ObservableObject {
         }
         sidebarWidth = width
         savedSidebarWidth = width
-        sidebarContentWidth = max(width - 16, 0)
+        sidebarContentWidth = SidebarLayoutMetrics.contentWidth(for: width)
     }
 
     func updateSidebarWidth(_ width: CGFloat, for windowState: BrowserWindowState) {
         windowState.sidebarWidth = width
         windowState.savedSidebarWidth = width
-        windowState.sidebarContentWidth = max(width - 16, 0)
+        windowState.sidebarContentWidth = SidebarLayoutMetrics.contentWidth(for: width)
         if windowRegistry?.activeWindow?.id == windowState.id {
             sidebarWidth = width
             savedSidebarWidth = width
-            sidebarContentWidth = max(width - 16, 0)
+            sidebarContentWidth = SidebarLayoutMetrics.contentWidth(for: width)
         }
     }
 
@@ -832,23 +830,16 @@ class BrowserManager: ObservableObject {
         saveSidebarSettings()
     }
 
-    func toggleAISidebar() {
-        guard nookSettings?.showAIAssistant == true else { return }
-        if let windowState = windowRegistry?.activeWindow {
-            toggleAISidebar(for: windowState)
+    func toggleUtilityPanel(_ panel: BrowserUtilityPanel, for windowState: BrowserWindowState) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            windowState.presentedUtilityPanel =
+                windowState.presentedUtilityPanel == panel ? nil : panel
         }
     }
 
-    func toggleAISidebar(for windowState: BrowserWindowState) {
-        guard nookSettings?.showAIAssistant == true else { return }
-
+    func dismissUtilityPanel(for windowState: BrowserWindowState) {
         withAnimation(.easeInOut(duration: 0.2)) {
-            if windowState.isSidebarAIChatVisible {
-                windowState.isSidebarAIChatVisible = false
-            } else {
-                windowState.isSidebarAIChatVisible = true
-                windowState.isSidebarMenuVisible = false
-            }
+            windowState.presentedUtilityPanel = nil
         }
     }
 
@@ -1189,7 +1180,7 @@ class BrowserManager: ObservableObject {
             savedSidebarWidth = 250
             sidebarWidth = 250
         }
-        sidebarContentWidth = max(sidebarWidth - 16, 0)
+        sidebarContentWidth = SidebarLayoutMetrics.contentWidth(for: sidebarWidth)
 
         // On first launch, default to visible sidebar
         isSidebarVisible = isFirstLaunch ? true : savedVisibility
@@ -1887,7 +1878,7 @@ class BrowserManager: ObservableObject {
 
         // Initialize window state with current global state for backward compatibility
         windowState.sidebarWidth = sidebarWidth
-        windowState.sidebarContentWidth = max(sidebarWidth - 16, 0)
+        windowState.sidebarContentWidth = SidebarLayoutMetrics.contentWidth(for: sidebarWidth)
         windowState.isSidebarVisible = isSidebarVisible
         windowState.savedSidebarWidth = savedSidebarWidth
         windowState.isCommandPaletteVisible = false
@@ -2461,11 +2452,9 @@ class BrowserManager: ObservableObject {
             .environment(webViewCoordinator)
             .environmentObject(gradientColorManager)
             .environment(\.nookSettings, nookSettings ?? NookSettingsService())
-            .environment(aiService)
-            .environment(aiConfigService)
 
         newWindow.contentView = NSHostingView(rootView: contentView)
-        newWindow.title = "Nook"
+        newWindow.title = "Lexon Browser"
         newWindow.minSize = NSSize(width: 470, height: 382)
         newWindow.contentMinSize = NSSize(width: 470, height: 382)
         newWindow.center()
@@ -2523,11 +2512,9 @@ class BrowserManager: ObservableObject {
             .environment(webViewCoordinator)
             .environmentObject(gradientColorManager)
             .environment(\.nookSettings, nookSettings ?? NookSettingsService())
-            .environment(aiService)
-            .environment(aiConfigService)
 
         newWindow.contentView = NSHostingView(rootView: contentView)
-        newWindow.title = "Incognito - Nook"
+        newWindow.title = "Incognito - Lexon Browser"
         newWindow.minSize = NSSize(width: 470, height: 382)
         newWindow.contentMinSize = NSSize(width: 470, height: 382)
         newWindow.center()
@@ -2626,12 +2613,18 @@ class BrowserManager: ObservableObject {
 
     /// Show downloads (placeholder implementation)
     func showDownloads() {
-        // TODO: Implement downloads UI
+        guard let windowState = windowRegistry?.activeWindow else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            windowState.presentedUtilityPanel = .downloads
+        }
     }
 
     /// Show history (placeholder implementation)
     func showHistory() {
-        // TODO: Implement history UI
+        guard let windowState = windowRegistry?.activeWindow else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            windowState.presentedUtilityPanel = .history
+        }
     }
 
     // MARK: - Tab Closure Undo Notification

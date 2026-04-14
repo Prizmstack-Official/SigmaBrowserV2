@@ -72,15 +72,6 @@ struct SidebarWindowControlsView: View {
             .buttonStyle(NavButtonStyle())
             .foregroundStyle(Color.primary)
 
-            if nookSettings.showAIAssistant {
-                Button("Toggle AI Assistant", systemImage: "sparkle") {
-                    browserManager.toggleAISidebar(for: windowState)
-                }
-                .labelStyle(.iconOnly)
-                .buttonStyle(NavButtonStyle())
-                .foregroundStyle(Color.primary)
-            }
-
             Spacer()
         }
         .frame(height: 28)

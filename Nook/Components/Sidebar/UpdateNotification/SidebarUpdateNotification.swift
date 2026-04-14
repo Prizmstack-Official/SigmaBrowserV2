@@ -11,6 +11,7 @@ struct SidebarUpdateNotification: View {
     @EnvironmentObject var browserManager: BrowserManager
     @Environment(BrowserWindowState.self) private var windowState
     @Environment(\.nookSettings) var settingsManager
+    @Environment(\.colorScheme) private var colorScheme
     let downloadsMenuVisible: Bool
     @State private var isVisible: Bool = false
     @State private var isExpanded: Bool = false
@@ -44,9 +45,9 @@ struct SidebarUpdateNotification: View {
         if let availability, shouldShowNotification {
             VStack(spacing: 0) {
                 VStack(spacing: 0) {
-                    Text("New version of Nook available")
+                    Text("New version of Lexon Browser available")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.black)
+                        .foregroundStyle(LexonTheme.primaryText(for: colorScheme))
                         .offset(y: isExpanded ? -25 : 0)
                         .zIndex(2)
 
@@ -56,23 +57,16 @@ struct SidebarUpdateNotification: View {
                         }) {
                             Text("Restart and Update")
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.black)
+                                .foregroundStyle(LexonTheme.primaryText(for: colorScheme))
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
                                 .frame(maxWidth: .infinity)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
                                         .fill(
-                                            LinearGradient(
-                                                gradient: Gradient(colors: [
-                                                    Color.green,
-                                                    Color.white,
-                                                    Color.green,
-                                                    Color.white
-                                                ]),
-                                                startPoint: UnitPoint(x: gradientPhase, y: gradientPhase),
-                                                endPoint: UnitPoint(x: gradientPhase + 1.0, y: gradientPhase + 1.0)
-                                            )
+                                            colorScheme == .dark
+                                                ? Color.white.opacity(0.12)
+                                                : Color.black.opacity(0.08)
                                         )
                                 )
                         }
@@ -88,8 +82,12 @@ struct SidebarUpdateNotification: View {
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.gray.opacity(0.2))
+                        .fill(LexonTheme.fieldFill(for: colorScheme, isHovered: isHovering || isExpanded))
                 )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(LexonTheme.border(for: colorScheme), lineWidth: 1)
+                }
                 .frame(maxWidth: .infinity)
                 .onHover { hovering in
                     isHovering = hovering

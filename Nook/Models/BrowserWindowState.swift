@@ -8,6 +8,11 @@
 import SwiftUI
 import Foundation
 
+enum BrowserUtilityPanel: String {
+    case history
+    case downloads
+}
+
 /// Represents the state of a single browser window, allowing multiple windows
 /// to have independent tab selections and UI states while sharing the same tab data.
 @MainActor
@@ -34,20 +39,14 @@ class BrowserWindowState {
     /// Last non-zero sidebar width so we can restore when toggling visibility
     var savedSidebarWidth: CGFloat = 250
 
-    /// Width for the AI assistant sidebar when visible
-    var aiSidebarWidth: CGFloat = 350
-
     /// Usable width for sidebar content (excludes padding)
     var sidebarContentWidth: CGFloat = 234
 
     /// Whether the sidebar is visible in this window
     var isSidebarVisible: Bool = true
 
-    /// Whether the sidebar menu is visible in this window
-    var isSidebarMenuVisible: Bool = false
-
-    /// Whether the AI chat panel is visible in this window
-    var isSidebarAIChatVisible: Bool = false
+    /// Which top-right utility panel is currently presented in this window.
+    var presentedUtilityPanel: BrowserUtilityPanel?
 
     /// Whether the command palette is visible in this window
     var isCommandPaletteVisible: Bool = false

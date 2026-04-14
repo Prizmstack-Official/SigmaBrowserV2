@@ -15,7 +15,6 @@ struct WindowView: View {
     @Environment(BrowserWindowState.self) private var windowState
     @Environment(CommandPalette.self) private var commandPalette
     @Environment(WindowRegistry.self) private var windowRegistry
-    @Environment(AIService.self) private var aiService
     @Environment(\.nookSettings) var nookSettings
     @StateObject private var hoverSidebarManager = HoverSidebarManager()
     @Environment(\.colorScheme) var colorScheme
@@ -150,16 +149,12 @@ struct WindowView: View {
     @ViewBuilder
     private func WindowBackground() -> some View {
         ZStack {
-            
             BlurEffectView(material: nookSettings.currentMaterial, state: .followsWindowActiveState)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             SpaceGradientBackgroundView()
-
-
-//            Rectangle()
-//                .fill(Color.clear)
-////                .universalGlassEffect(.regular.tint(Color(.windowBackgroundColor).opacity(0.35)), in: .rect(cornerRadius: 0))
-//                .clipped()
+                .opacity(0.45)
+            LexonTheme.windowGradientTint(for: colorScheme)
+            LexonTheme.windowWash(for: colorScheme)
         }
         .backgroundDraggable()
         .environment(windowState)
@@ -167,31 +162,21 @@ struct WindowView: View {
 
     @ViewBuilder
     private func SidebarWebViewStack() -> some View {
-        let aiVisible = windowState.isSidebarAIChatVisible
-        let aiAppearsOnTrailingEdge = nookSettings.sidebarPosition == .left
         let sidebarVisible = windowState.isSidebarVisible
         let sidebarOnRight = nookSettings.sidebarPosition == .right
         let sidebarOnLeft = nookSettings.sidebarPosition == .left
         
         HStack(spacing: 0) {
-            if aiAppearsOnTrailingEdge {
+            if nookSettings.sidebarPosition == .left {
                 SpacesSidebar()
                 WebContent()
-                if aiVisible {
-                    AISidebar()
-                }
             } else {
-                if aiVisible {
-                    AISidebar()
-                }
                 WebContent()
                 SpacesSidebar()
             }
         }
-        // Apply padding similar to regular sidebar: remove padding when sidebar/AI is visible on that side
-        // When sidebar is on left, AI appears on right (trailing); when sidebar is on right, AI appears on left (leading)
-        .padding(.trailing, (sidebarVisible && sidebarOnRight) || (aiVisible && sidebarOnLeft) ? 0 : 8)
-        .padding(.leading, (sidebarVisible && sidebarOnLeft) || (aiVisible && sidebarOnRight) ? 0 : 8)
+        .padding(.trailing, sidebarVisible && sidebarOnRight ? 0 : 8)
+        .padding(.leading, sidebarVisible && sidebarOnLeft ? 0 : 8)
     }
 
     @ViewBuilder
@@ -218,9 +203,9 @@ struct WindowView: View {
     private func WebContent() -> some View {
         let cornerRadius: CGFloat = {
             if #available(macOS 26.0, *) {
-                return 8
+                return LexonTheme.panelCornerRadius
             } else {
-                return 8
+                return LexonTheme.panelCornerRadius
             }
         }()
         
@@ -243,55 +228,30 @@ struct WindowView: View {
                 WebsiteView()
                     .zIndex(2000)
             }
-            
-            // Shadow shape positioned behind both top bar and webview
-            // The webview will block the bottom shadow, leaving only top/left/right shadows visible
-            if hasTopBar {
-                UnevenRoundedRectangle(
-                    topLeadingRadius: cornerRadius + 1,
-                    bottomLeadingRadius: 0,
-                    bottomTrailingRadius: 0,
-                    topTrailingRadius: cornerRadius + 1,
-                    style: .continuous
-                )
-                .frame(height: TopBarMetrics.height)
-                .frame(maxWidth: .infinity)
-                .offset(y: 8)
-                .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 0)
-                .allowsHitTesting(false)
-                .zIndex(-1)
-            }
         }
-        .overlay {
-            if aiService.isExecutingTools {
-                ToolExecutionGlowView()
-                    .transition(.opacity.animation(.easeInOut(duration: 0.3)))
-                    .allowsHitTesting(false)
+        .overlay(alignment: .topTrailing) {
+            if let presentedPanel = windowState.presentedUtilityPanel {
+                BrowserUtilityPanelView(panel: presentedPanel)
+                    .environmentObject(browserManager)
+                    .environment(windowState)
+                    .padding(.top, nookSettings.topBarAddressView ? TopBarMetrics.height + 10 : 12)
+                    .padding(.trailing, 12)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(3500)
             }
         }
         .padding(.bottom, 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    @ViewBuilder
-    private func AISidebar() -> some View {
-        let handleAlignment: Alignment = nookSettings.sidebarPosition == .left ? .leading : .trailing
-        
-        SidebarAIChat()
-            .frame(width: windowState.aiSidebarWidth)
-            .overlay(alignment: handleAlignment) {
-                AISidebarResizeView()
-                    .frame(maxHeight: .infinity)
-                    .environmentObject(browserManager)
-                    .environment(windowState)
-            }
-            .transition(
-                .move(edge: nookSettings.sidebarPosition == .left ? .trailing : .leading)
-                .combined(with: .opacity)
-            )
-            .environmentObject(browserManager)
-            .environment(windowState)
-            .environment(nookSettings)
+        .background(
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(LexonTheme.chromeFill(for: colorScheme))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .stroke(LexonTheme.border(for: colorScheme), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .shadow(color: LexonTheme.shadow(for: colorScheme), radius: 22, x: 0, y: 12)
     }
 
     private func websiteColumnClipShape(cornerRadius: CGFloat, hasTopBar: Bool) -> AnyShape {

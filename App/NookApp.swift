@@ -19,20 +19,11 @@ struct NookApp: App {
     @State private var webViewCoordinator = WebViewCoordinator()
     @State private var settingsManager = NookSettingsService()
     @State private var keyboardShortcutManager = KeyboardShortcutManager()
-    @State private var aiConfigService: AIConfigService
-    @State private var mcpManager = MCPManager()
-    @State private var aiService: AIService
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     // TEMPORARY: BrowserManager will be phased out as a global singleton.
     // Eventually each manager (TabManager, etc.) will be independent and injected via environment.
     @StateObject private var browserManager = BrowserManager()
-
-    init() {
-        let config = AIConfigService()
-        _aiConfigService = State(initialValue: config)
-        _aiService = State(initialValue: AIService(configService: config))
-    }
 
     var body: some Scene {
         WindowGroup {
@@ -51,12 +42,8 @@ struct NookApp: App {
                     .environment(webViewCoordinator)
                     .environment(\.nookSettings, settingsManager)
                     .environment(keyboardShortcutManager)
-                    .environment(aiConfigService)
-                    .environment(mcpManager)
-                    .environment(aiService)
                     .onAppear {
                         setupApplicationLifecycle()
-                        setupAIServices()
                     }
                 
                 
@@ -80,24 +67,10 @@ struct NookApp: App {
                 .environmentObject(browserManager.gradientColorManager)
                 .environment(\.nookSettings, settingsManager)
                 .environment(keyboardShortcutManager)
-                .environment(aiConfigService)
-                .environment(mcpManager)
         }
     }
 
     // MARK: - Application Lifecycle Setup
-
-    /// Wires AI services to runtime dependencies (BrowserManager, MCP, etc.)
-    private func setupAIServices() {
-        aiService.browserManager = browserManager
-        aiService.mcpManager = mcpManager
-
-        let toolExecutor = BrowserToolExecutor(browserManager: browserManager)
-        aiService.browserToolExecutor = toolExecutor
-
-        // Start enabled MCP servers
-        mcpManager.startEnabledServers(configs: aiConfigService.mcpServers)
-    }
 
     /// Configures application-level dependencies and callbacks when the first window appears.
     ///
@@ -119,7 +92,6 @@ struct NookApp: App {
         // Connect AppDelegate for termination and updates
         appDelegate.browserManager = browserManager
         appDelegate.windowRegistry = windowRegistry
-        appDelegate.mcpManager = mcpManager
         browserManager.appDelegate = appDelegate
 
         // TEMPORARY: Wire coordinators to BrowserManager
@@ -128,8 +100,6 @@ struct NookApp: App {
         browserManager.windowRegistry = windowRegistry
         browserManager.nookSettings = settingsManager
         browserManager.tabManager.nookSettings = settingsManager
-        browserManager.aiService = aiService
-        browserManager.aiConfigService = aiConfigService
 
         // Configure managers that depend on settings
         browserManager.compositorManager.setUnloadTimeout(

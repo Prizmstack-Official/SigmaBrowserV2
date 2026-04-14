@@ -2,7 +2,7 @@
 //  NookCommands.swift
 //  Nook
 //
-//  Menu bar commands for the Nook browser application
+//  Menu bar commands for the Lexon Browser application
 //
 
 import AppKit
@@ -80,10 +80,10 @@ struct NookCommands: Commands {
         CommandGroup(replacing: .newItem) {}
         CommandGroup(replacing: .windowList) {}
 
-        // App Menu Section (under Nook)
+        // App Menu Section (under Lexon Browser)
         CommandGroup(after: .appInfo) {
             Divider()
-            Button("Make Nook Default Browser") {
+            Button("Make Lexon Browser Default Browser") {
                 browserManager.setAsDefaultBrowser()
             }
             
@@ -149,12 +149,6 @@ struct NookCommands: Commands {
                 browserManager.toggleSidebar()
             }
             .modifier(dynamicShortcut(.toggleSidebar))
-
-            Button("Toggle AI Assistant") {
-                browserManager.toggleAISidebar()
-            }
-            .modifier(dynamicShortcut(.toggleAIAssistant))
-            .disabled(!nookSettings.showAIAssistant)
 
             Button("Toggle Picture in Picture") {
                 browserManager.requestPiPForCurrentTabInActiveWindow()
