@@ -10,11 +10,15 @@
 import AppKit
 import AuthenticationServices
 import Foundation
+#if canImport(Security)
+import Security
+#endif
 
 /// Authorization states the browser can be in relative to passkey access.
 enum PasskeyAuthorizationState: String {
     case authorized
     case denied
+    case missingEntitlement
     case notDetermined
     case unavailable
 }
@@ -54,6 +58,11 @@ final class PasskeyManager: NSObject, ObservableObject {
             return
         }
 
+        guard hasBrowserPublicKeyCredentialEntitlement else {
+            authorizationState = .missingEntitlement
+            return
+        }
+
         if #available(macOS 13.3, *) {
             switch manager.authorizationStateForPlatformCredentials {
             case .authorized:
@@ -87,6 +96,16 @@ final class PasskeyManager: NSObject, ObservableObject {
 
         refreshAuthorizationState()
         return authorizationState
+    }
+
+    private var hasBrowserPublicKeyCredentialEntitlement: Bool {
+        #if canImport(Security)
+        let entitlement = "com.apple.developer.web-browser.public-key-credential" as CFString
+        guard let task = SecTaskCreateFromSelf(nil) else { return false }
+        return (SecTaskCopyValueForEntitlement(task, entitlement, nil) as? Bool) == true
+        #else
+        return false
+        #endif
     }
 }
 

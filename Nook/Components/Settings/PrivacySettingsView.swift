@@ -512,6 +512,7 @@ private struct PasskeySettingsSection: View {
         switch passkeyManager.authorizationState {
         case .authorized: return "checkmark.shield.fill"
         case .denied: return "xmark.shield.fill"
+        case .missingEntitlement: return "exclamationmark.shield.fill"
         case .notDetermined: return "questionmark.shield"
         case .unavailable: return "exclamationmark.triangle"
         }
@@ -521,6 +522,7 @@ private struct PasskeySettingsSection: View {
         switch passkeyManager.authorizationState {
         case .authorized: return .green
         case .denied: return .red
+        case .missingEntitlement: return .orange
         case .notDetermined: return .orange
         case .unavailable: return .gray
         }
@@ -530,6 +532,7 @@ private struct PasskeySettingsSection: View {
         switch passkeyManager.authorizationState {
         case .authorized: return "Authorized"
         case .denied: return "Denied"
+        case .missingEntitlement: return "Build Capability Missing"
         case .notDetermined: return "Not Configured"
         case .unavailable: return "Unavailable"
         }
@@ -541,6 +544,8 @@ private struct PasskeySettingsSection: View {
             return "Lexon Browser can use passkeys stored on this device and in third-party credential managers."
         case .denied:
             return "Passkey access was denied. You can grant access in System Settings > Passwords."
+        case .missingEntitlement:
+            return "This build is missing Apple's approved browser passkey capability, so websites fall back to nearby-device verification instead of local passkeys."
         case .notDetermined:
             return "Grant Lexon Browser access to passkeys for passwordless sign-in on supported websites."
         case .unavailable:
