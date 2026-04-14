@@ -255,22 +255,7 @@ struct TopBarView: View {
         let currentTab = browserManager.currentTab(for: windowState)
 
         return HStack(spacing: 8) {
-            Image(systemName: currentTab == nil ? "magnifyingglass" : "globe")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(urlBarTextColor.opacity(0.8))
-
-            if currentTab != nil {
-                Text(displayURL)
-                    .font(.system(size: 13, weight: .medium, design: .default))
-                    .foregroundStyle(urlBarTextColor)
-                    .tracking(-0.1)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Spacer()
-            } else {
-                EmptyView()
-            }
-
+            Spacer(minLength: 0)
             if currentTab != nil {
                 URLBarActionButtons(
                     isHovering: isHovering,
@@ -285,6 +270,16 @@ struct TopBarView: View {
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 12)
         .frame(height: TopBarMetrics.controlSize)
+        .overlay {
+            CenteredURLBarLabel(
+                tab: currentTab,
+                placeholderText: "Search or ask a question...",
+                textColor: urlBarTextColor
+            )
+            // Reserve space for the trailing controls so the label stays visually centered.
+            .padding(.horizontal, currentTab == nil ? 16 : 72)
+            .allowsHitTesting(false)
+        }
         .background(urlBarBackgroundColor)
         .animation(
             shouldAnimateColorChange ? .easeInOut(duration: 0.3) : nil,
@@ -295,6 +290,7 @@ struct TopBarView: View {
             RoundedRectangle(cornerRadius: LexonTheme.pillCornerRadius, style: .continuous)
                 .stroke(LexonTheme.border(for: colorScheme), lineWidth: 0.5)
         }
+        .help(currentTab?.url.absoluteString ?? "Search or ask a question...")
         .onTapGesture {
             if let currentTab = browserManager.currentTab(for: windowState) {
                 commandPalette.openWithCurrentURL(currentTab.url)
@@ -400,66 +396,6 @@ struct TopBarView: View {
         #endif
     }
 
-    private var displayURL: AttributedString {
-        guard let currentTab = browserManager.currentTab(for: windowState)
-        else {
-            return ""
-        }
-
-        return formatURL(
-            currentTab.url,
-            title: currentTab.name,
-            isHovering: isHovering
-        )
-    }
-
-    private func formatURL(_ url: URL, title: String?, isHovering: Bool)
-        -> AttributedString
-    {
-        if isHovering {
-            guard let host = url.host else {
-                return AttributedString(url.absoluteString)
-            }
-
-            let cleanHost =
-                host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
-
-            let hostString = AttributedString(cleanHost)
-
-            var pathString = AttributedString()
-
-            if !url.path.isEmpty {
-                pathString += AttributedString(url.path)
-            }
-
-            if let query = url.query {
-                pathString += AttributedString("?" + query)
-            }
-
-            pathString.foregroundColor = urlBarTextColor.opacity(0.35)
-
-            return hostString + pathString
-        }
-
-        guard let host = url.host else {
-            return AttributedString(url.absoluteString)
-        }
-
-        let cleanHost =
-            host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
-
-        if url.path.isEmpty || url.path == "/" {
-            return AttributedString(cleanHost)
-        } else {
-            let displayTitle = title ?? cleanHost
-            var result = AttributedString(cleanHost)
-            var titlePart = AttributedString(" / " + displayTitle)
-            titlePart.foregroundColor = urlBarTextColor.opacity(0.35)
-            result.append(titlePart)
-            return result
-        }
-    }
-
     private func pipButton(for tab: Tab) -> some View {
         Button(action: {
             tab.requestPictureInPicture()
@@ -478,6 +414,108 @@ struct TopBarView: View {
             .contentShape(RoundedRectangle(cornerRadius: 3))
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+private struct CenteredURLBarLabel: View {
+    let tab: Tab?
+    let placeholderText: String
+    let textColor: Color
+
+    var body: some View {
+        HStack(spacing: 8) {
+            icon
+
+            Text(displayText)
+                .font(.system(size: 13, weight: .medium, design: .default))
+                .foregroundStyle(textColor)
+                .tracking(-0.1)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    @ViewBuilder
+    private var icon: some View {
+        if let tab {
+            tab.favicon
+                .resizable()
+                .scaledToFit()
+                .frame(width: 14, height: 14)
+                .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+        } else {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(textColor.opacity(0.8))
+        }
+    }
+
+    private var displayText: String {
+        guard let tab else { return placeholderText }
+        return formatDisplayText(for: tab)
+    }
+
+    private func formatDisplayText(for tab: Tab) -> String {
+        let trimmedTitle = tab.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanHost = cleanHost(from: tab.url)
+
+        guard isMeaningfulTitle(trimmedTitle, cleanHost: cleanHost) else {
+            return cleanHost.isEmpty ? tab.url.absoluteString : cleanHost
+        }
+
+        if let brandComponent = matchingBrandComponent(in: trimmedTitle, cleanHost: cleanHost) {
+            return brandComponent
+        }
+
+        return trimmedTitle
+    }
+
+    private func isMeaningfulTitle(_ title: String, cleanHost: String) -> Bool {
+        guard !title.isEmpty, title != "New Tab" else { return false }
+
+        let lowercasedTitle = title.lowercased()
+        let lowercasedHost = cleanHost.lowercased()
+
+        return !lowercasedTitle.contains("://")
+            && lowercasedTitle != lowercasedHost
+            && lowercasedTitle != lowercasedHost + "/"
+    }
+
+    private func matchingBrandComponent(in title: String, cleanHost: String) -> String? {
+        let hostRoot = cleanHost.split(separator: ".").first.map(String.init) ?? cleanHost
+        let normalizedHostRoot = normalizeToken(hostRoot)
+        guard !normalizedHostRoot.isEmpty else { return nil }
+
+        let separators = [" | ", " - ", " — ", " · ", " • "]
+        for separator in separators {
+            let components = title
+                .components(separatedBy: separator)
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+
+            if let match = components.first(where: { component in
+                let normalizedComponent = normalizeToken(component)
+                return !normalizedComponent.isEmpty
+                    && (normalizedComponent.contains(normalizedHostRoot)
+                        || normalizedHostRoot.contains(normalizedComponent))
+            }) {
+                return match
+            }
+        }
+
+        return nil
+    }
+
+    private func cleanHost(from url: URL) -> String {
+        guard let host = url.host else { return "" }
+        return host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+    }
+
+    private func normalizeToken(_ value: String) -> String {
+        value
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber }
     }
 }
 
