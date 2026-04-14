@@ -10,10 +10,13 @@ import SwiftUI
 struct SpaceTab: View {
     @ObservedObject var tab: Tab
     var action: () -> Void
-    var onClose: () -> Void
+    var onDone: () -> Void
+    var onToggleLock: () -> Void
     var onMute: () -> Void
+    var nestingLevel: Int = 0
     @State private var isHovering: Bool = false
-    @State private var isCloseHovering: Bool = false
+    @State private var isDoneHovering: Bool = false
+    @State private var isLockHovering: Bool = false
     @State private var isSpeakerHovering: Bool = false
     @FocusState private var isTextFieldFocused: Bool
     @EnvironmentObject var browserManager: BrowserManager
@@ -34,6 +37,13 @@ struct SpaceTab: View {
             }
         }) {
             HStack(spacing: 8) {
+                if nestingLevel > 0 {
+                    Rectangle()
+                        .fill(LexonTheme.border(for: colorScheme))
+                        .frame(width: 12, height: 1)
+                        .padding(.leading, CGFloat(nestingLevel - 1) * 14)
+                }
+
                 ZStack {
                     tab.favicon
                         .resizable()
@@ -104,26 +114,49 @@ struct SpaceTab: View {
                         .truncationMode(.tail)
                         .textSelection(.disabled) // Make text non-selectable
                 }
+                if tab.isLocked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
 
+                if isHovering || tab.isLocked {
+                    HStack(spacing: 4) {
+                        Button(action: onToggleLock) {
+                            Image(systemName: tab.isLocked ? "lock.fill" : "lock.open")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(textTab)
+                                .frame(width: 24, height: 24)
+                                .background(
+                                    isLockHovering
+                                        ? (isCurrentTab ? LexonTheme.activeFill(for: colorScheme) : LexonTheme.hoverFill(for: colorScheme))
+                                        : Color.clear
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .onHover { hovering in
+                            isLockHovering = hovering
+                        }
 
-
-                if isHovering {
-                    Button(action: onClose) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .heavy))
-                            .foregroundColor(textTab)
-                            .frame(width: 24,height: 24)
-                            .background(
-                                isCloseHovering
-                                    ? (isCurrentTab ? LexonTheme.activeFill(for: colorScheme) : LexonTheme.hoverFill(for: colorScheme))
-                                    : Color.clear
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .onHover { hovering in
-                        isCloseHovering = hovering
+                        Button(action: onDone) {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(tab.isLocked ? textTab.opacity(0.4) : textTab)
+                                .frame(width: 24, height: 24)
+                                .background(
+                                    isDoneHovering
+                                        ? (isCurrentTab ? LexonTheme.activeFill(for: colorScheme) : LexonTheme.hoverFill(for: colorScheme))
+                                        : Color.clear
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                        .disabled(tab.isLocked)
+                        .buttonStyle(PlainButtonStyle())
+                        .onHover { hovering in
+                            isDoneHovering = hovering
+                        }
                     }
                 }
             }
@@ -226,6 +259,11 @@ struct SpaceTab: View {
         splitMenu
         duplicateButton
         moveToSpaceMenu
+        Button {
+            onToggleLock()
+        } label: {
+            Label(tab.isLocked ? "Unlock Tab" : "Lock Tab", systemImage: tab.isLocked ? "lock.open" : "lock.fill")
+        }
     }
 
     @ViewBuilder
@@ -292,22 +330,23 @@ struct SpaceTab: View {
             Button {
                 browserManager.tabManager.closeAllTabsBelow(tab)
             } label: {
-                Label("Close All Below", systemImage: "arrow.down.to.line")
+                Label("Mark All Below Done", systemImage: "arrow.down.to.line")
             }
         }
 
         Button {
             // TODO: Implement close all except this
         } label: {
-            Label("Close Others", systemImage: "xmark.circle")
+            Label("Mark Others Done", systemImage: "checkmark.circle")
         }
         .disabled(true)
 
         Button(role: .destructive) {
-            onClose()
+            onDone()
         } label: {
-            Label("Close", systemImage: "xmark")
+            Label("Mark Done", systemImage: "checkmark")
         }
+        .disabled(tab.isLocked)
     }
 
     private var isActive: Bool {

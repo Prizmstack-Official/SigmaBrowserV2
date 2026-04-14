@@ -20,6 +20,10 @@ final class TabEntity {
     // Profile association for global pinned tabs (essentials). Optional for migration compatibility.
     var profileId: UUID?
     var folderId: UUID? // Folder membership for tabs within spacepinned area
+    var parentTabId: UUID?
+    var isLocked: Bool?
+    var completedAt: Date?
+    var completionSource: String?
 
     // Navigation state tracking
     var currentURLString: String? // The actual current page URL (may differ from urlString after navigation)
@@ -36,6 +40,10 @@ final class TabEntity {
         spaceId: UUID?,
         profileId: UUID? = nil,
         folderId: UUID? = nil,
+        parentTabId: UUID? = nil,
+        isLocked: Bool? = nil,
+        completedAt: Date? = nil,
+        completionSource: String? = nil,
         currentURLString: String? = nil,
         canGoBack: Bool = false,
         canGoForward: Bool = false
@@ -49,6 +57,10 @@ final class TabEntity {
         self.spaceId = spaceId
         self.profileId = profileId
         self.folderId = folderId
+        self.parentTabId = parentTabId
+        self.isLocked = isLocked
+        self.completedAt = completedAt
+        self.completionSource = completionSource
 
         // For backward compatibility, if currentURLString is not provided, use urlString
         self.currentURLString = currentURLString ?? urlString

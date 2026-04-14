@@ -269,7 +269,7 @@ struct SpacesSideBarView: View {
                 isActive: windowState.currentSpaceId == space.id,
                 isSidebarHovered: $isSidebarHovered,
                 onActivateTab: { browserManager.selectTab($0, in: windowState) },
-                onCloseTab: { browserManager.tabManager.removeTab($0.id) },
+                onCloseTab: { _ = browserManager.tabManager.completeTab($0.id) },
                 onPinTab: { browserManager.tabManager.pinTab($0) },
                 onMoveTabUp: { browserManager.tabManager.moveTabUp($0.id) },
                 onMoveTabDown: { browserManager.tabManager.moveTabDown($0.id) },
@@ -291,22 +291,14 @@ struct SpacesSideBarView: View {
     private func showSpaceCreationDialog() {
         browserManager.dialogManager.showDialog(
             SpaceCreationDialog(
-                onCreate: { name, icon, profileId in
-                    let finalName = name.isEmpty ? "New Space" : name
-                    let finalIcon = icon.isEmpty ? "✨" : icon
-                    let newSpace = browserManager.tabManager.createSpace(
-                        name: finalName,
-                        icon: finalIcon
-                    )
-
-                    // Assign profile if one was selected
-                    if let profileId = profileId {
-                        browserManager.tabManager.assign(spaceId: newSpace.id, toProfile: profileId)
-                    }
+                onCreate: { draft in
+                    let newSpace = browserManager.tabManager.createSpace(from: draft)
 
                     if let targetIndex = browserManager.tabManager.spaces.firstIndex(where: { $0.id == newSpace.id }) {
                         activeSpaceIndex = targetIndex
                     }
+
+                    browserManager.setActiveSpace(newSpace, in: windowState)
 
                     browserManager.dialogManager.closeDialog()
                 },
@@ -324,33 +316,10 @@ struct SpacesSideBarView: View {
             SpaceEditDialog(
                 space: targetSpace,
                 mode: mode,
-                onSave: { newName, newIcon, newProfileId in
-                    let spaceId = targetSpace.id
-
-                    do {
-                        if newIcon != targetSpace.icon {
-                            try browserManager.tabManager.updateSpaceIcon(
-                                spaceId: spaceId,
-                                icon: newIcon
-                            )
-                        }
-
-                        if newName != targetSpace.name {
-                            try browserManager.tabManager.renameSpace(
-                                spaceId: spaceId,
-                                newName: newName
-                            )
-                        }
-
-                        // Update profile if changed
-                        if newProfileId != targetSpace.profileId, let profileId = newProfileId {
-                            browserManager.tabManager.assign(spaceId: spaceId, toProfile: profileId)
-                        }
-
-                        browserManager.dialogManager.closeDialog()
-                    } catch {
-                        print("⚠️ Failed to update space \(spaceId.uuidString):", error)
-                    }
+                onSave: { draft in
+                    browserManager.tabManager.updateSpaceSettings(spaceId: targetSpace.id, using: draft)
+                    browserManager.refreshGradientsForSpace(targetSpace, animate: false)
+                    browserManager.dialogManager.closeDialog()
                 },
                 onCancel: {
                     browserManager.dialogManager.closeDialog()

@@ -42,6 +42,10 @@ import OSLog
         let profileId: UUID?
         // Folder association for tabs within folders
         let folderId: UUID?
+        let parentTabId: UUID?
+        let isLocked: Bool?
+        let completedAt: Date?
+        let completionSource: String?
 
         // Navigation state
         let currentURLString: String?
@@ -67,6 +71,8 @@ import OSLog
         let gradientData: Data?
         let activeTabId: UUID?
         let profileId: UUID?
+        let usesSeparateProfile: Bool?
+        let isWorkspaceIncognito: Bool?
     }
 
     struct SnapshotState: Codable {
@@ -215,6 +221,10 @@ import OSLog
             e.spaceId = t.spaceId
             e.profileId = t.profileId
             e.folderId = t.folderId
+            e.parentTabId = t.parentTabId
+            e.isLocked = t.isLocked
+            e.completedAt = t.completedAt
+            e.completionSource = t.completionSource
             e.currentURLString = t.currentURLString
             e.canGoBack = t.canGoBack
             e.canGoForward = t.canGoForward
@@ -229,6 +239,10 @@ import OSLog
                 spaceId: t.spaceId,
                 profileId: t.profileId,
                 folderId: t.folderId,
+                parentTabId: t.parentTabId,
+                isLocked: t.isLocked,
+                completedAt: t.completedAt,
+                completionSource: t.completionSource,
                 currentURLString: t.currentURLString,
                 canGoBack: t.canGoBack,
                 canGoForward: t.canGoForward
@@ -270,6 +284,8 @@ import OSLog
             e.index = s.index
             if let data = s.gradientData { e.gradientData = data }
             e.profileId = s.profileId
+            e.usesSeparateProfile = s.usesSeparateProfile
+            e.isWorkspaceIncognito = s.isWorkspaceIncognito
         } else {
             let e = SpaceEntity(
                 id: s.id,
@@ -277,7 +293,9 @@ import OSLog
                 icon: s.icon,
                 index: s.index,
                 gradientData: s.gradientData ?? (SpaceGradient.default.encoded ?? Data()),
-                profileId: s.profileId
+                profileId: s.profileId,
+                usesSeparateProfile: s.usesSeparateProfile,
+                isWorkspaceIncognito: s.isWorkspaceIncognito
             )
             ctx.insert(e)
         }
@@ -350,6 +368,7 @@ import OSLog
         if tabIDs.count != snapshot.tabs.count { throw PersistenceError.invalidModelState }
         let spaceIDs = Set(snapshot.spaces.map { $0.id })
         if spaceIDs.count != snapshot.spaces.count { throw PersistenceError.invalidModelState }
+        let tabsById = Dictionary(uniqueKeysWithValues: snapshot.tabs.map { ($0.id, $0) })
         // Ensure all spaceIds referenced by tabs exist (or are nil) and flag invariants
         for t in snapshot.tabs {
             if let sid = t.spaceId, !spaceIDs.contains(sid) { throw PersistenceError.invalidModelState }
@@ -359,6 +378,13 @@ import OSLog
             if t.isPinned && t.spaceId != nil { throw PersistenceError.invalidModelState }
             // Space-pinned must have a spaceId
             if t.isSpacePinned && t.spaceId == nil { throw PersistenceError.invalidModelState }
+            if t.completedAt != nil && t.completionSource == nil { throw PersistenceError.invalidModelState }
+            if let parentId = t.parentTabId {
+                guard let parent = tabsById[parentId] else { throw PersistenceError.invalidModelState }
+                guard parent.parentTabId == nil else { throw PersistenceError.invalidModelState }
+                guard t.spaceId != nil, t.spaceId == parent.spaceId else { throw PersistenceError.invalidModelState }
+                guard !t.isPinned, !t.isSpacePinned, t.folderId == nil else { throw PersistenceError.invalidModelState }
+            }
         }
 
         // TODO: Once profiles participate in snapshots, validate that each space.profileId
@@ -376,9 +402,18 @@ import OSLog
             let tabs: [TabEntity] = try ctx.fetch(FetchDescriptor<TabEntity>())
             let spaces: [SpaceEntity] = try ctx.fetch(FetchDescriptor<SpaceEntity>())
             let spaceIDs = Set(spaces.map { $0.id })
+            let tabsById = Dictionary(uniqueKeysWithValues: tabs.map { ($0.id, $0) })
             for t in tabs {
                 if let sid = t.spaceId, !spaceIDs.contains(sid) {
                     throw PersistenceError.dataCorruption
+                }
+                if let parentId = t.parentTabId {
+                    guard let parent = tabsById[parentId] else {
+                        throw PersistenceError.dataCorruption
+                    }
+                    if parent.parentTabId != nil || parent.spaceId != t.spaceId {
+                        throw PersistenceError.dataCorruption
+                    }
                 }
             }
         } catch {
@@ -534,6 +569,13 @@ class TabManager: ObservableObject {
         tab.nookSettings = nookSettings
     }
 
+    private func defaultPersistentProfileId() -> UUID? {
+        if let currentProfile = browserManager?.currentProfile, !currentProfile.isEphemeral {
+            return currentProfile.id
+        }
+        return browserManager?.profileManager.profiles.first?.id
+    }
+
     private func allTabsAllSpaces() -> [Tab] {
         let normals = spaces.flatMap { tabsBySpace[$0.id] ?? [] }
         let spacePinned = spaces.flatMap { spacePinnedTabs[$0.id] ?? [] }
@@ -627,6 +669,20 @@ class TabManager: ObservableObject {
         return arr.contains { $0.id == tab.id }
     }
 
+    private func sanitizedParentTabId(for parentTab: Tab?, in spaceId: UUID?) -> UUID? {
+        guard let parentTab,
+              let parentSpaceId = parentTab.spaceId,
+              let spaceId,
+              parentSpaceId == spaceId,
+              parentTab.parentTabId == nil,
+              !parentTab.isPinned,
+              !parentTab.isSpacePinned
+        else {
+            return nil
+        }
+        return parentTab.id
+    }
+
     /// Create a new regular tab duplicating the source tab's URL/name and insert near an anchor tab.
     /// - Parameters:
     ///   - source: The tab to duplicate (pinned/space-pinned or regular).
@@ -672,9 +728,16 @@ class TabManager: ObservableObject {
 
     // MARK: - Space Management
     @discardableResult
-    func createSpace(name: String, icon: String = "square.grid.2x2", gradient: SpaceGradient = .default) -> Space {
+    func createSpace(
+        name: String,
+        icon: String = "square.grid.2x2",
+        gradient: SpaceGradient = .default,
+        profileId: UUID? = nil,
+        usesSeparateProfile: Bool = false,
+        isWorkspaceIncognito: Bool = false
+    ) -> Space {
         // Always assign to a profile - prefer current profile, fallback to default profile
-        let resolvedProfileId = browserManager?.currentProfile?.id ?? browserManager?.profileManager.profiles.first?.id
+        let resolvedProfileId = profileId ?? defaultPersistentProfileId()
         // Ensure we always have a profile to assign
         guard let profileId = resolvedProfileId else {
             fatalError("TabManager.createSpace requires at least one profile to exist")
@@ -683,8 +746,11 @@ class TabManager: ObservableObject {
             name: name,
             icon: icon,
             gradient: gradient,
-            profileId: profileId
+            profileId: profileId,
+            usesSeparateProfile: usesSeparateProfile,
+            isWorkspaceIncognito: isWorkspaceIncognito
         )
+        space.isEphemeral = isWorkspaceIncognito
         spaces.append(space)
         setTabs([], for: space.id)
         setSpacePinnedTabs([], for: space.id)
@@ -704,6 +770,7 @@ class TabManager: ObservableObject {
         guard let idx = spaces.firstIndex(where: { $0.id == id }) else {
             return
         }
+        let removedSpace = spaces[idx]
         // Move tabs out or close them; here we close normal tabs of the space
         let closing = tabsBySpace[id] ?? []
         let spacePinnedClosing = spacePinnedTabs[id] ?? []
@@ -717,6 +784,12 @@ class TabManager: ObservableObject {
             currentSpace = spaces.first
         }
 
+        if removedSpace.isWorkspaceIncognito {
+            Task { [weak browserManager] in
+                await browserManager?.profileManager.removeWorkspaceEphemeralProfile(for: removedSpace.id)
+            }
+        }
+
         persistSnapshot()
 
         // Validate window states after space removal
@@ -728,7 +801,7 @@ class TabManager: ObservableObject {
 
         // Edge case: assign space to current profile if missing
         if space.profileId == nil {
-            let defaultProfileId = browserManager?.currentProfile?.id ?? browserManager?.profileManager.profiles.first?.id
+            let defaultProfileId = defaultPersistentProfileId()
             if let pid = defaultProfileId {
                 assign(spaceId: space.id, toProfile: pid)
             } else {
@@ -906,6 +979,7 @@ class TabManager: ObservableObject {
     func moveTabToFolder(tab: Tab, folderId: UUID) {
         let newTab = tab
         removeFromCurrentContainer(newTab)
+        newTab.parentTabId = nil
         newTab.folderId = folderId
         newTab.isSpacePinned = true
         var sp = spacePinnedTabs[tab.spaceId!] ?? []
@@ -946,7 +1020,113 @@ class TabManager: ObservableObject {
         persistSnapshot()
     }
 
-    func removeTab(_ id: UUID) {
+    func tab(withId id: UUID) -> Tab? {
+        allTabs().first { $0.id == id }
+    }
+
+    func directChildren(of parentId: UUID) -> [Tab] {
+        allTabs()
+            .filter { $0.parentTabId == parentId }
+            .sorted { $0.index < $1.index }
+    }
+
+    func cleanupCandidateTabs(for spaceId: UUID) -> [Tab] {
+        let regularTabs = (tabsBySpace[spaceId] ?? []).sorted { $0.index < $1.index }
+        let rootTabs = regularTabs.filter { $0.parentTabId == nil && !$0.isLocked }
+        let regularCandidates = rootTabs.flatMap { root in
+            let unlockedChildren = directChildren(of: root.id).filter { !$0.isLocked }
+            return [root] + unlockedChildren
+        }
+        let pinnedCandidates = (spacePinnedTabs[spaceId] ?? []).filter { !$0.isLocked }
+        return regularCandidates + pinnedCandidates
+    }
+
+    func lockedRegularTabCount(for spaceId: UUID) -> Int {
+        let regularLocked = (tabsBySpace[spaceId] ?? []).filter { $0.isLocked }.count
+        let pinnedLocked = (spacePinnedTabs[spaceId] ?? []).filter { $0.isLocked }.count
+        return regularLocked + pinnedLocked
+    }
+
+    func setLockState(_ isLocked: Bool, for tabId: UUID) {
+        guard let tab = tab(withId: tabId) else { return }
+        tab.isLocked = isLocked
+        persistSnapshot()
+    }
+
+    @discardableResult
+    func completeTab(_ id: UUID, source: String = "done", showToast: Bool = true) -> Int {
+        guard let tab = tab(withId: id), !tab.isLocked else { return 0 }
+
+        let now = Date()
+        let children = directChildren(of: id)
+        let unlockedChildren = children.filter { !$0.isLocked }
+        let lockedChildren = children.filter { $0.isLocked }
+        let completingTabs = [tab] + unlockedChildren
+
+        for lockedChild in lockedChildren {
+            lockedChild.parentTabId = nil
+        }
+
+        for candidate in completingTabs {
+            candidate.completedAt = now
+            candidate.completionSource = source
+        }
+
+        trackRecentlyClosedTabs(
+            completingTabs.map { (tab: $0, spaceId: $0.spaceId) },
+            count: completingTabs.count,
+            showToast: showToast
+        )
+
+        for candidate in completingTabs.sorted(by: { $0.index > $1.index }) {
+            _ = removeTab(
+                candidate.id,
+                respectingLock: false,
+                trackClosure: false,
+                persistAfter: false,
+                validateAfter: false
+            )
+        }
+
+        persistSnapshot()
+        browserManager?.validateWindowStates()
+        return completingTabs.count
+    }
+
+    @discardableResult
+    func completeUnlockedTabs(for spaceId: UUID) -> Int {
+        let regularTabs = (tabsBySpace[spaceId] ?? [])
+            .filter { !$0.isLocked && $0.parentTabId == nil }
+            .sorted { $0.index < $1.index }
+        let pinnedTabs = (spacePinnedTabs[spaceId] ?? [])
+            .filter { !$0.isLocked }
+            .sorted { $0.index < $1.index }
+
+        var completedCount = 0
+        for tab in regularTabs {
+            completedCount += completeTab(tab.id, source: "cleanup", showToast: false)
+        }
+        for tab in pinnedTabs {
+            completedCount += completeTab(tab.id, source: "cleanup", showToast: false)
+        }
+        if completedCount > 0 {
+            browserManager?.showTabClosureToast(tabCount: completedCount)
+        }
+        return completedCount
+    }
+
+    @discardableResult
+    func removeTab(
+        _ id: UUID,
+        respectingLock: Bool = true,
+        trackClosure: Bool = true,
+        persistAfter: Bool = true,
+        validateAfter: Bool = true
+    ) -> Bool {
+        if respectingLock, let existing = tab(withId: id), existing.isLocked {
+            return false
+        }
+
         // Notify SplitViewManager about tab closure to prevent zombie state
         browserManager?.splitManager.handleTabClosure(id)
         
@@ -990,10 +1170,16 @@ class TabManager: ObservableObject {
             }
         }
 
-        guard let tab = removed else { return }
+        guard let tab = removed else { return false }
+
+        for child in directChildren(of: id) {
+            child.parentTabId = nil
+        }
 
         // Add to recently closed tabs for undo functionality
-        trackRecentlyClosedTab(tab, spaceId: removedSpaceId)
+        if trackClosure {
+            trackRecentlyClosedTab(tab, spaceId: removedSpaceId)
+        }
 
         // Force unload the tab from compositor before removing
         browserManager?.compositorManager.unloadTab(tab)
@@ -1040,10 +1226,15 @@ class TabManager: ObservableObject {
             }
         }
 
-        persistSnapshot()
+        if persistAfter {
+            persistSnapshot()
+        }
         
         // Validate window states after tab removal
-        browserManager?.validateWindowStates()
+        if validateAfter {
+            browserManager?.validateWindowStates()
+        }
+        return true
     }
 
     func setActiveTab(_ tab: Tab) {
@@ -1146,7 +1337,8 @@ class TabManager: ObservableObject {
     @discardableResult
     func createNewTab(
         url: String = "https://www.google.com",
-        in space: Space? = nil
+        in space: Space? = nil,
+        parentTab: Tab? = nil
     ) -> Tab {
         let settings = nookSettings ?? browserManager?.nookSettings
         let template = settings?.resolvedSearchEngineTemplate ?? SearchProvider.google.queryTemplate
@@ -1154,13 +1346,13 @@ class TabManager: ObservableObject {
         guard let validURL = URL(string: normalizedUrl)
         else {
             print("Invalid URL: \(url). Falling back to default.")
-            return createNewTab(in: space)
+            return createNewTab(in: space, parentTab: parentTab)
         }
 
         let targetSpace: Space? = space ?? currentSpace ?? ensureDefaultSpaceIfNeeded()
         // Ensure the target space has a profile assignment; backfill from currentProfile if missing
         if let ts = targetSpace, ts.profileId == nil {
-            let defaultProfileId = browserManager?.currentProfile?.id ?? browserManager?.profileManager.profiles.first?.id
+            let defaultProfileId = defaultPersistentProfileId()
             if let pid = defaultProfileId {
                 ts.profileId = pid
                 persistSnapshot()
@@ -1186,6 +1378,7 @@ class TabManager: ObservableObject {
             favicon: "globe",
             spaceId: sid,
             index: 0, // New tabs get index 0 to appear at top
+            parentTabId: sanitizedParentTabId(for: parentTab, in: sid),
             browserManager: browserManager
         )
         addTab(newTab)
@@ -1227,6 +1420,7 @@ class TabManager: ObservableObject {
     func createNewTabWithWebView(
         url: String = "https://www.google.com",
         in space: Space? = nil,
+        parentTab: Tab? = nil,
         existingWebView: WKWebView? = nil
     ) -> Tab {
         let settings = nookSettings ?? browserManager?.nookSettings
@@ -1235,13 +1429,13 @@ class TabManager: ObservableObject {
         guard let validURL = URL(string: normalizedUrl)
         else {
             print("Invalid URL: \(url). Falling back to default.")
-            return createNewTab(in: space)
+            return createNewTab(in: space, parentTab: parentTab)
         }
 
         let targetSpace: Space? = space ?? currentSpace ?? ensureDefaultSpaceIfNeeded()
         // Ensure the target space has a profile assignment; backfill from currentProfile if missing
         if let ts = targetSpace, ts.profileId == nil {
-            let defaultProfileId = browserManager?.currentProfile?.id ?? browserManager?.profileManager.profiles.first?.id
+            let defaultProfileId = defaultPersistentProfileId()
             if let pid = defaultProfileId {
                 ts.profileId = pid
                 persistSnapshot()
@@ -1267,6 +1461,7 @@ class TabManager: ObservableObject {
             favicon: "globe",
             spaceId: sid,
             index: 0, // New tabs get index 0 to appear at top
+            parentTabId: sanitizedParentTabId(for: parentTab, in: sid),
             browserManager: browserManager,
             existingWebView: existingWebView
         )
@@ -1279,11 +1474,11 @@ class TabManager: ObservableObject {
     // WKWebView is returned to WebKit so it can load popup content. No initial
     // navigation is performed to preserve window.opener scripting semantics.
     @discardableResult
-    func createPopupTab(in space: Space? = nil) -> Tab {
+    func createPopupTab(in space: Space? = nil, parentTab: Tab? = nil) -> Tab {
         let targetSpace: Space? = space ?? currentSpace ?? ensureDefaultSpaceIfNeeded()
         // Ensure target space has a profile assignment
         if let ts = targetSpace, ts.profileId == nil {
-            let defaultProfileId = browserManager?.currentProfile?.id ?? browserManager?.profileManager.profiles.first?.id
+            let defaultProfileId = defaultPersistentProfileId()
             if let pid = defaultProfileId {
                 ts.profileId = pid
                 persistSnapshot()
@@ -1300,6 +1495,7 @@ class TabManager: ObservableObject {
             favicon: "globe",
             spaceId: sid,
             index: nextIndex,
+            parentTabId: sanitizedParentTabId(for: parentTab, in: sid),
             browserManager: browserManager
         )
         newTab.isPopupHost = true
@@ -1312,7 +1508,7 @@ class TabManager: ObservableObject {
     private func ensureDefaultSpaceIfNeeded() -> Space {
         if let cs = currentSpace { return cs }
         if spaces.isEmpty {
-            let resolvedProfileId = browserManager?.currentProfile?.id
+            let resolvedProfileId = defaultPersistentProfileId()
             let personal = Space(name: "Personal", icon: "person.crop.circle", gradient: .default, profileId: resolvedProfileId)
             spaces.append(personal)
             setTabs([], for: personal.id)
@@ -1331,22 +1527,11 @@ class TabManager: ObservableObject {
             print("No active tab to close")
             return
         }
-        removeTab(currentTab.id)
+        _ = completeTab(currentTab.id, source: "keyboard")
     }
 
     func clearRegularTabs(for spaceId: UUID) {
-        guard let tabs = tabsBySpace[spaceId] else { return }
-
-        print("🧹 [TabManager] Clearing \(tabs.count) regular tabs for space \(spaceId)")
-
-        // Remove all regular tabs for this space
-        for tab in tabs {
-            if(tab.id != self.currentTab?.id) {
-                removeTab(tab.id)
-            }
-        }
-
-        persistSnapshot()
+        _ = completeUnlockedTabs(for: spaceId)
     }
     
     func unloadTab(_ tab: Tab) {
@@ -1662,7 +1847,11 @@ class TabManager: ObservableObject {
         
         // Add to target space
         tab.spaceId = toSpaceId
+        tab.parentTabId = nil
         if asSpacePinned {
+            tab.folderId = nil
+            tab.isPinned = false
+            tab.isSpacePinned = true
             var spacePinned = spacePinnedTabs[toSpaceId] ?? []
             tab.index = toIndex
             let safeIndex = max(0, min(toIndex, spacePinned.count))
@@ -1673,6 +1862,8 @@ class TabManager: ObservableObject {
             }
             setSpacePinnedTabs(spacePinned, for: toSpaceId)
         } else {
+            tab.isPinned = false
+            tab.isSpacePinned = false
             var regularTabs = tabsBySpace[toSpaceId] ?? []
             tab.index = toIndex
             let safeIndex = max(0, min(toIndex, regularTabs.count))
@@ -1775,6 +1966,7 @@ class TabManager: ObservableObject {
         tab.spaceId = nil
         tab.isSpacePinned = false  // Clear space-pinned status
         tab.folderId = nil         // Clear folder reference
+        tab.parentTabId = nil
         tab.isPinned = true        // CRITICAL: Explicitly set global pin status
 
         withCurrentProfilePinnedArray { arr in
@@ -1806,6 +1998,7 @@ class TabManager: ObservableObject {
         }
         moved.isPinned = false
         moved.spaceId = sid
+        moved.parentTabId = nil
         var arr = tabsBySpace[sid] ?? []
         arr.insert(moved, at: 0)
         setTabs(arr, for: sid)
@@ -1862,6 +2055,7 @@ class TabManager: ObservableObject {
 
         // Add to space pinned tabs
         tab.spaceId = spaceId
+        tab.parentTabId = nil
         tab.isSpacePinned = true   // CRITICAL: Explicitly set space-pinned status
         tab.isPinned = false       // CRITICAL: Clear global pin status
         var spacePinned = spacePinnedTabs[spaceId] ?? []
@@ -1889,6 +2083,7 @@ class TabManager: ObservableObject {
         var regularTabs = tabsBySpace[spaceId] ?? []
         let nextIndex = (regularTabs.map { $0.index }.max() ?? -1) + 1
         unpinned.index = nextIndex
+        unpinned.parentTabId = nil
         regularTabs.append(unpinned)
         setTabs(regularTabs, for: spaceId)
 
@@ -1966,6 +2161,10 @@ class TabManager: ObservableObject {
         t.folderId = e.folderId
         t.isPinned = e.isPinned
         t.isSpacePinned = e.isSpacePinned
+        t.parentTabId = e.parentTabId
+        t.isLocked = e.isLocked ?? false
+        t.completedAt = e.completedAt
+        t.completionSource = e.completionSource
 
         // Restore navigation state
         t.canGoBack = e.canGoBack
@@ -1984,13 +2183,17 @@ class TabManager: ObservableObject {
             )
             let sortedSpaces = spaceEntities.sorted { $0.index < $1.index }
             self.spaces = sortedSpaces.map {
-                Space(
+                let space = Space(
                     id: $0.id,
                     name: $0.name,
                     icon: $0.icon,
                     gradient: SpaceGradient.decode($0.gradientData),
-                    profileId: $0.profileId
+                    profileId: $0.profileId,
+                    usesSeparateProfile: $0.usesSeparateProfile ?? false,
+                    isWorkspaceIncognito: $0.isWorkspaceIncognito ?? false
                 )
+                space.isEphemeral = space.isWorkspaceIncognito
+                return space
             }
             for sp in spaces {
                 setTabs([], for: sp.id)
@@ -1998,7 +2201,7 @@ class TabManager: ObservableObject {
             }
 
             // Ensure all spaces have profile assignments
-            let defaultProfileId = browserManager?.currentProfile?.id ?? browserManager?.profileManager.profiles.first?.id
+            let defaultProfileId = defaultPersistentProfileId()
             if let dp = defaultProfileId {
                 var didAssignProfiles = false
                 for space in spaces where space.profileId == nil {
@@ -2043,7 +2246,7 @@ class TabManager: ObservableObject {
 
             // Global pinned → group by profile
             var pinnedMap: [UUID: [Tab]] = [:]
-            let fallbackProfileId = browserManager?.currentProfile?.id ?? browserManager?.profileManager.profiles.first?.id
+            let fallbackProfileId = defaultPersistentProfileId()
             var __didAssignDefaultProfile = false
             var __pending: [Tab] = []
             for e in globalPinned {
@@ -2218,7 +2421,9 @@ class TabManager: ObservableObject {
                 index: sIndex,
                 gradientData: sp.gradient.encoded,
                 activeTabId: sp.activeTabId,
-                profileId: sp.profileId
+                profileId: sp.profileId,
+                usesSeparateProfile: sp.usesSeparateProfile,
+                isWorkspaceIncognito: sp.isWorkspaceIncognito
             )
             spaceSnapshots.append(ss)
         }
@@ -2240,6 +2445,10 @@ class TabManager: ObservableObject {
                     isSpacePinned: false,
                     profileId: pid,
                     folderId: t.folderId,
+                    parentTabId: t.parentTabId,
+                    isLocked: t.isLocked,
+                    completedAt: t.completedAt,
+                    completionSource: t.completionSource,
                     currentURLString: t.url.absoluteString,
                     canGoBack: t.canGoBack,
                     canGoForward: t.canGoForward
@@ -2262,6 +2471,10 @@ class TabManager: ObservableObject {
                     isSpacePinned: true,
                     profileId: nil,
                     folderId: t.folderId,
+                    parentTabId: t.parentTabId,
+                    isLocked: t.isLocked,
+                    completedAt: t.completedAt,
+                    completionSource: t.completionSource,
                     currentURLString: t.url.absoluteString,
                     canGoBack: t.canGoBack,
                     canGoForward: t.canGoForward
@@ -2281,6 +2494,10 @@ class TabManager: ObservableObject {
                     isSpacePinned: false,
                     profileId: nil,
                     folderId: t.folderId,
+                    parentTabId: t.parentTabId,
+                    isLocked: t.isLocked,
+                    completedAt: t.completedAt,
+                    completionSource: t.completionSource,
                     currentURLString: t.url.absoluteString,
                     canGoBack: t.canGoBack,
                     canGoForward: t.canGoForward
@@ -2399,6 +2616,49 @@ extension TabManager {
     func tabs(in space: Space) -> [Tab] {
         (tabsBySpace[space.id] ?? []).sorted { $0.index < $1.index }
     }
+
+    func rootTabs(in space: Space) -> [Tab] {
+        tabs(in: space).filter { $0.parentTabId == nil }
+    }
+
+    func childTabs(of parentTabId: UUID, in space: Space) -> [Tab] {
+        tabs(in: space)
+            .filter { $0.parentTabId == parentTabId }
+            .sorted { $0.index < $1.index }
+    }
+
+    func effectiveProfile(for space: Space?) -> Profile? {
+        guard let browserManager else { return nil }
+        guard let space else { return browserManager.currentProfile ?? browserManager.profileManager.profiles.first }
+
+        if space.isWorkspaceIncognito {
+            return browserManager.profileManager.ensureWorkspaceEphemeralProfile(for: space)
+        }
+
+        if let profileId = space.profileId,
+           let profile = browserManager.profileManager.profile(for: profileId) {
+            return profile
+        }
+
+        return browserManager.currentProfile ?? browserManager.profileManager.profiles.first
+    }
+
+    func effectiveProfile(forSpaceId spaceId: UUID?) -> Profile? {
+        guard let spaceId else {
+            return browserManager?.currentProfile ?? browserManager?.profileManager.profiles.first
+        }
+        let space = spaces.first(where: { $0.id == spaceId })
+        return effectiveProfile(for: space)
+    }
+
+    func effectiveProfileId(for space: Space?) -> UUID? {
+        effectiveProfile(for: space)?.id
+    }
+
+    func displayGradient(for space: Space?) -> SpaceGradient {
+        guard let space else { return .default }
+        return space.isWorkspaceIncognito ? .incognito : space.gradient
+    }
 }
 
 // MARK: - Profile Change Handling
@@ -2431,7 +2691,7 @@ extension TabManager {
 // MARK: - Profile Assignment Helpers
 extension TabManager {
     fileprivate func reconcileSpaceProfilesIfNeeded() {
-        let defaultProfileId = browserManager?.currentProfile?.id ?? browserManager?.profileManager.profiles.first?.id
+        let defaultProfileId = defaultPersistentProfileId()
         guard let pid = defaultProfileId else {
             print("⚠️ [TabManager] No profiles available for space reconciliation")
             return
@@ -2450,7 +2710,7 @@ extension TabManager {
     /// Ensures all tabs resolve to a valid profile via their space association.
     /// If a space lacks a profile, assigns the current profile as a fallback.
     func validateTabProfileAssignments() {
-        guard let fallbackPid = browserManager?.currentProfile?.id else { return }
+        guard let fallbackPid = defaultPersistentProfileId() else { return }
         var didFix = false
 
         // For each space that has any tabs, ensure it has a profileId
@@ -2473,11 +2733,104 @@ extension TabManager {
 
 // MARK: - Profile Assignment API
 extension TabManager {
+    func createSpace(from draft: SpaceSettingsDraft) -> Space {
+        let finalName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "New Space"
+            : draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let finalIcon = draft.icon.isEmpty ? "✨" : draft.icon
+        let fallbackProfileId = draft.profileId ?? defaultPersistentProfileId()
+        let newSpace = createSpace(
+            name: finalName,
+            icon: finalIcon,
+            profileId: fallbackProfileId,
+            usesSeparateProfile: false,
+            isWorkspaceIncognito: false
+        )
+        updateSpaceSettings(spaceId: newSpace.id, using: draft)
+        return newSpace
+    }
+
+    func updateSpaceSettings(spaceId: UUID, using draft: SpaceSettingsDraft) {
+        guard let idx = spaces.firstIndex(where: { $0.id == spaceId }) else { return }
+        guard let browserManager else { return }
+
+        let space = spaces[idx]
+        let trimmedName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let finalName = trimmedName.isEmpty ? space.name : trimmedName
+        let finalIcon = draft.icon.isEmpty ? space.icon : draft.icon
+        let previousProfileId = space.profileId
+        let wasSeparateProfile = space.usesSeparateProfile
+        let wasWorkspaceIncognito = space.isWorkspaceIncognito
+
+        space.name = finalName
+        space.icon = finalIcon
+        space.usesSeparateProfile = draft.usesSeparateProfile
+        space.isWorkspaceIncognito = draft.isWorkspaceIncognito
+        space.isEphemeral = draft.isWorkspaceIncognito
+
+        let selectedSharedProfileId = draft.profileId.flatMap { candidate in
+            browserManager.profileManager.profiles.contains(where: { $0.id == candidate }) ? candidate : nil
+        } ?? defaultPersistentProfileId()
+
+        if draft.usesSeparateProfile {
+            let shouldCreateDedicatedProfile =
+                !wasSeparateProfile
+                || previousProfileId == nil
+                || previousProfileId == selectedSharedProfileId
+                || (previousProfileId.map { browserManager.profileManager.isEphemeralProfile($0) } ?? false)
+
+            if shouldCreateDedicatedProfile {
+                let dedicatedProfile = browserManager.profileManager.createProfile(
+                    name: finalName,
+                    icon: "person.crop.circle.badge.plus"
+                )
+                space.profileId = dedicatedProfile.id
+            }
+        } else if let sharedProfileId = selectedSharedProfileId {
+            space.profileId = sharedProfileId
+        }
+
+        if draft.isWorkspaceIncognito {
+            let privateProfile = browserManager.profileManager.ensureWorkspaceEphemeralProfile(for: space)
+            if let activeWindow = browserManager.windowRegistry?.activeWindow,
+               activeWindow.currentSpaceId == space.id {
+                activeWindow.currentProfileId = privateProfile.id
+            }
+        } else if wasWorkspaceIncognito {
+            Task { [weak browserManager] in
+                await browserManager?.profileManager.removeWorkspaceEphemeralProfile(for: space.id)
+            }
+        }
+
+        if let effectiveProfileId = effectiveProfileId(for: space) {
+            for (_, windowState) in browserManager.windowRegistry?.windows ?? [:]
+            where windowState.currentSpaceId == space.id {
+                windowState.currentProfileId = effectiveProfileId
+                windowState.refreshCompositor()
+            }
+        }
+
+        if let activeWindow = browserManager.windowRegistry?.activeWindow,
+           activeWindow.currentSpaceId == space.id,
+           let effectiveProfile = effectiveProfile(for: space),
+           browserManager.currentProfile?.id != effectiveProfile.id {
+            Task { [weak browserManager, weak activeWindow] in
+                guard let browserManager, let activeWindow else { return }
+                await browserManager.switchToProfile(effectiveProfile, context: .spaceChange, in: activeWindow)
+            }
+        } else {
+            browserManager.refreshGradientsForSpace(space, animate: false)
+        }
+
+        persistSnapshot()
+        browserManager.validateWindowStates()
+    }
+
     /// Centralized helper to assign a space to a profile and persist.
     /// Always assigns to a valid profile (no nil assignments allowed).
     func assign(spaceId: UUID, toProfile profileId: UUID) {
         if let idx = spaces.firstIndex(where: { $0.id == spaceId }) {
-            let exists = browserManager?.profileManager.profiles.contains(where: { $0.id == profileId }) ?? false
+            let exists = browserManager?.profileManager.profile(for: profileId) != nil
             if !exists {
                 print("⚠️ [TabManager] Attempted to assign space to unknown profile: \(profileId)")
                 return
@@ -2530,6 +2883,10 @@ extension TabManager {
         tabCopy.isPinned = tab.isPinned
         tabCopy.isSpacePinned = tab.isSpacePinned
         tabCopy.folderId = tab.folderId
+        tabCopy.parentTabId = tab.parentTabId
+        tabCopy.isLocked = tab.isLocked
+        tabCopy.completedAt = nil
+        tabCopy.completionSource = nil
 
         // Store snapshot with navigation state for accurate restoration
         recentlyClosedTabs.append((
@@ -2550,7 +2907,7 @@ extension TabManager {
         }
     }
 
-    private func trackRecentlyClosedTabs(_ tabs: [(tab: Tab, spaceId: UUID?)], count: Int) {
+    private func trackRecentlyClosedTabs(_ tabs: [(tab: Tab, spaceId: UUID?)], count: Int, showToast: Bool = true) {
         let now = Date()
 
         // Update last tab closure time for cooldown
@@ -2584,6 +2941,10 @@ extension TabManager {
             tabCopy.isPinned = tab.isPinned
             tabCopy.isSpacePinned = tab.isSpacePinned
             tabCopy.folderId = tab.folderId
+            tabCopy.parentTabId = tab.parentTabId
+            tabCopy.isLocked = tab.isLocked
+            tabCopy.completedAt = nil
+            tabCopy.completionSource = nil
 
             // Store snapshot with navigation state for accurate restoration
             recentlyClosedTabs.append((
@@ -2599,8 +2960,10 @@ extension TabManager {
         // Schedule cleanup of expired tabs
         scheduleUndoTimerCleanup()
 
-        // Always show toast for bulk operations (bypass cooldown)
-        browserManager?.showTabClosureToast(tabCount: count)
+        if showToast {
+            // Always show toast for bulk operations (bypass cooldown)
+            browserManager?.showTabClosureToast(tabCount: count)
+        }
     }
 
     private func shouldShowTabClosureToast(now: Date) -> Bool {
@@ -2721,22 +3084,18 @@ extension TabManager {
         guard tabs.firstIndex(where: { $0.id == tab.id }) != nil else { return }
 
         // Get all tabs below the current tab (higher index values)
-        let tabsBelow = tabs.filter { $0.index > tab.index }
+        let tabsBelow = tabs.filter { $0.index > tab.index && $0.parentTabId == nil && !$0.isLocked }
 
         // Return early if no tabs below
         if tabsBelow.isEmpty { return }
 
-        // Prepare tabs for tracking
-        let tabsToTrack = tabsBelow.map { (tab: $0, spaceId: spaceId) }
-
-        // Close all tabs below
-        for tabToClose in tabsBelow {
-            // Close the tab without tracking (we'll do bulk tracking)
-            closeTabWithoutTracking(tabToClose.id)
+        var completedCount = 0
+        for tabToComplete in tabsBelow.sorted(by: { $0.index > $1.index }) {
+            completedCount += completeTab(tabToComplete.id, source: "bulk", showToast: false)
         }
-
-        // Track all closed tabs for undo and show toast
-        trackRecentlyClosedTabs(tabsToTrack, count: tabsBelow.count)
+        if completedCount > 0 {
+            browserManager?.showTabClosureToast(tabCount: completedCount)
+        }
     }
 
     private func closeTabWithoutTracking(_ id: UUID) {

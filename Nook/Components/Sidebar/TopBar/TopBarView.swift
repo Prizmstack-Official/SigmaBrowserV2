@@ -198,7 +198,7 @@ struct TopBarView: View {
     private var urlBar: some View {
         let currentTab = browserManager.currentTab(for: windowState)
 
-        HStack(spacing: 8) {
+        return HStack(spacing: 8) {
             Image(systemName: currentTab == nil ? "magnifyingglass" : "globe")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(urlBarTextColor.opacity(0.8))
@@ -500,18 +500,8 @@ struct BrowserUtilityButtonsView: View {
     private func showSpaceCreationDialog() {
         browserManager.dialogManager.showDialog(
             SpaceCreationDialog(
-                onCreate: { name, icon, profileId in
-                    let finalName = name.isEmpty ? "New Space" : name
-                    let finalIcon = icon.isEmpty ? "✨" : icon
-                    let newSpace = browserManager.tabManager.createSpace(
-                        name: finalName,
-                        icon: finalIcon
-                    )
-
-                    if let profileId = profileId {
-                        browserManager.tabManager.assign(spaceId: newSpace.id, toProfile: profileId)
-                    }
-
+                onCreate: { draft in
+                    let newSpace = browserManager.tabManager.createSpace(from: draft)
                     browserManager.setActiveSpace(newSpace, in: windowState)
                     browserManager.dialogManager.closeDialog()
                 },

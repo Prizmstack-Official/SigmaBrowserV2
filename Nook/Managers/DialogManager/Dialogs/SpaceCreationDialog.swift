@@ -12,17 +12,21 @@ struct SpaceCreationDialog: DialogPresentable {
     @State private var spaceName: String
     @State private var spaceIcon: String
     @State private var selectedProfileId: UUID?
+    @State private var usesSeparateProfile: Bool
+    @State private var isWorkspaceIncognito: Bool
 
-    let onCreate: (String, String, UUID?) -> Void
+    let onCreate: (SpaceSettingsDraft) -> Void
     let onCancel: () -> Void
 
     init(
-        onCreate: @escaping (String, String, UUID?) -> Void,
+        onCreate: @escaping (SpaceSettingsDraft) -> Void,
         onCancel: @escaping () -> Void
     ) {
         _spaceName = State(initialValue: "")
         _spaceIcon = State(initialValue: "")
         _selectedProfileId = State(initialValue: nil)
+        _usesSeparateProfile = State(initialValue: false)
+        _isWorkspaceIncognito = State(initialValue: false)
         self.onCreate = onCreate
         self.onCancel = onCancel
     }
@@ -40,7 +44,9 @@ struct SpaceCreationDialog: DialogPresentable {
         SpaceCreationContent(
             spaceName: $spaceName,
             spaceIcon: $spaceIcon,
-            selectedProfileId: $selectedProfileId
+            selectedProfileId: $selectedProfileId,
+            usesSeparateProfile: $usesSeparateProfile,
+            isWorkspaceIncognito: $isWorkspaceIncognito
         )
     }
 
@@ -66,7 +72,16 @@ struct SpaceCreationDialog: DialogPresentable {
 
     private func handleCreate() {
         let trimmedName = spaceName.trimmingCharacters(in: .whitespacesAndNewlines)
-        onCreate(trimmedName, spaceIcon, selectedProfileId)
+        let finalName = trimmedName.isEmpty ? "New Space" : trimmedName
+        let finalIcon = spaceIcon.isEmpty ? "✨" : spaceIcon
+        let draft = SpaceSettingsDraft(
+            name: finalName,
+            icon: finalIcon,
+            profileId: selectedProfileId,
+            usesSeparateProfile: usesSeparateProfile,
+            isWorkspaceIncognito: isWorkspaceIncognito
+        )
+        onCreate(draft)
     }
 }
 
@@ -74,6 +89,8 @@ struct SpaceCreationContent: View {
     @Binding var spaceName: String
     @Binding var spaceIcon: String
     @Binding var selectedProfileId: UUID?
+    @Binding var usesSeparateProfile: Bool
+    @Binding var isWorkspaceIncognito: Bool
     @StateObject private var emojiManager = EmojiPickerManager()
     @EnvironmentObject var browserManager: BrowserManager
 
@@ -123,7 +140,7 @@ struct SpaceCreationContent: View {
             }
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("Profile")
+                Text("Shared Profile")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
 
@@ -143,6 +160,34 @@ struct SpaceCreationContent: View {
                         Label(profile.name, systemImage: profile.icon).tag(profile.id)
                     }
                 }
+                .disabled(usesSeparateProfile || isWorkspaceIncognito)
+
+                Text(profileFootnote)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Preferences")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.primary)
+
+                SpaceSettingsToggleRow(
+                    title: "Separate Profiles",
+                    helpText: "Auto-create an isolated profile for this workspace when it is saved."
+                ) {
+                    Toggle("", isOn: $usesSeparateProfile)
+                        .labelsHidden()
+                }
+
+                SpaceSettingsToggleRow(
+                    title: "Incognito",
+                    helpText: "Keep this workspace private with a non-persistent profile."
+                ) {
+                    Toggle("", isOn: $isWorkspaceIncognito)
+                        .labelsHidden()
+                }
             }
         }
         .padding(.horizontal, 4)
@@ -154,6 +199,16 @@ struct SpaceCreationContent: View {
         .onChange(of: emojiManager.selectedEmoji) { _, newValue in
             spaceIcon = newValue
         }
+    }
+
+    private var profileFootnote: String {
+        if isWorkspaceIncognito {
+            return "This workspace will open with a private session."
+        }
+        if usesSeparateProfile {
+            return "A dedicated profile will be created automatically for this workspace."
+        }
+        return "Choose the shared profile this workspace should start with."
     }
 
     private var currentProfileName: String {

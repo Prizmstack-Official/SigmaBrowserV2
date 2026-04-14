@@ -22,13 +22,26 @@ final class SpaceEntity {
     // SwiftData should migrate automatically for new optional properties.
     // If issues arise in the wild, consider introducing an explicit model version and migration plan.
     var profileId: UUID?
+    var usesSeparateProfile: Bool?
+    var isWorkspaceIncognito: Bool?
 
-    init(id: UUID, name: String, icon: String, index: Int, gradientData: Data = SpaceGradient.default.encoded ?? Data(), profileId: UUID? = nil) {
+    init(
+        id: UUID,
+        name: String,
+        icon: String,
+        index: Int,
+        gradientData: Data = SpaceGradient.default.encoded ?? Data(),
+        profileId: UUID? = nil,
+        usesSeparateProfile: Bool? = nil,
+        isWorkspaceIncognito: Bool? = nil
+    ) {
         self.id = id
         self.name = name
         self.icon = icon
         self.index = index
         self.gradientData = gradientData
         self.profileId = profileId
+        self.usesSeparateProfile = usesSeparateProfile
+        self.isWorkspaceIncognito = isWorkspaceIncognito
     }
 }

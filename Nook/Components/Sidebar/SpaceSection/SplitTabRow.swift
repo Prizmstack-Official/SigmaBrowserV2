@@ -77,7 +77,7 @@ private struct SplitHalfTab: View {
                         Spacer(minLength: 4)
                         if isHovering {
                             Button(action: onClose) {
-                                Image(systemName: "xmark")
+                                Image(systemName: "checkmark")
                                     .font(.system(size: 12, weight: .bold))
                                     .foregroundColor(textTab)
                                     .frame(width: 24, height: 24)
@@ -108,7 +108,7 @@ private struct SplitHalfTab: View {
                     }
                 }
                 .contextMenu {
-                    Button("Close Tab", action: onClose)
+                    Button("Mark Done", action: onClose)
                 }
             }
         }

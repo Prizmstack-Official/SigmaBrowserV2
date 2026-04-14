@@ -152,31 +152,9 @@ struct SpacesListItem: View {
             SpaceEditDialog(
                 space: space,
                 mode: .icon,
-                onSave: { newName, newIcon, newProfileId in
-                    do {
-                        if newIcon != space.icon {
-                            try browserManager.tabManager.updateSpaceIcon(
-                                spaceId: space.id,
-                                icon: newIcon
-                            )
-                        }
-
-                        if newName != space.name {
-                            try browserManager.tabManager.renameSpace(
-                                spaceId: space.id,
-                                newName: newName
-                            )
-                        }
-
-                        // Update profile if changed
-                        if newProfileId != space.profileId, let profileId = newProfileId {
-                            browserManager.tabManager.assign(spaceId: space.id, toProfile: profileId)
-                        }
-
-                        browserManager.dialogManager.closeDialog()
-                    } catch {
-                        print("⚠️ Failed to update space \(space.id.uuidString):", error)
-                    }
+                onSave: { draft in
+                    browserManager.tabManager.updateSpaceSettings(spaceId: space.id, using: draft)
+                    browserManager.dialogManager.closeDialog()
                 },
                 onCancel: {
                     browserManager.dialogManager.closeDialog()

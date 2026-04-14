@@ -86,6 +86,10 @@ struct SpaceView: View {
         return browserManager.tabManager.tabs(in: space)
     }
 
+    private var rootTabs: [Tab] {
+        tabs.filter { $0.parentTabId == nil }
+    }
+
     private var spacePinnedTabs: [Tab] {
         if windowState.isIncognito {
             return []
@@ -409,7 +413,8 @@ struct SpaceView: View {
             SpaceTab(
                 tab: tab,
                 action: { handleUserTabActivation(tab) },
-                onClose: { onCloseTab(tab) },
+                onDone: { onCloseTab(tab) },
+                onToggleLock: { browserManager.tabManager.setLockState(!tab.isLocked, for: tab.id) },
                 onMute: { onMuteTab(tab) }
             )
         }
@@ -437,7 +442,8 @@ struct SpaceView: View {
             Button { browserManager.tabManager.unpinTabFromSpace(tab) } label: { Label("Unpin from Space", systemImage: "pin.slash") }
             Button { onPinTab(tab) } label: { Label("Pin Globally", systemImage: "pin.circle") }
             Divider()
-            Button { onCloseTab(tab) } label: { Label("Close tab", systemImage: "xmark") }
+            Button { browserManager.tabManager.setLockState(!tab.isLocked, for: tab.id) } label: { Label(tab.isLocked ? "Unlock Tab" : "Lock Tab", systemImage: tab.isLocked ? "lock.open" : "lock.fill") }
+            Button { onCloseTab(tab) } label: { Label("Mark Done", systemImage: "checkmark") }
         }
     }
 
@@ -485,6 +491,7 @@ struct SpaceView: View {
             let windowId = windowState.id
 
             if split.isSplit(for: windowId),
+               !currentTabs.contains(where: { $0.parentTabId != nil }),
                let leftId = split.leftTabId(for: windowId), let rightId = split.rightTabId(for: windowId),
                let leftIdx = currentTabs.firstIndex(where: { $0.id == leftId }),
                let rightIdx = currentTabs.firstIndex(where: { $0.id == rightId }),
@@ -534,8 +541,8 @@ struct SpaceView: View {
 
     private func regularTabsView(currentTabs: [Tab]) -> some View {
         VStack(spacing: 2) {
-            ForEach(Array(currentTabs.enumerated()), id: \.element.id) { index, tab in
-                regularTabView(tab, index: index)
+            ForEach(Array(rootTabs.enumerated()), id: \.element.id) { index, tab in
+                regularTabWithChildren(tab, index: index)
             }
         }
     }
@@ -548,6 +555,20 @@ struct SpaceView: View {
     }
 
     private func regularTabView(_ tab: Tab, index: Int) -> some View {
+        regularTabView(tab, index: index, nestingLevel: 0)
+    }
+
+    private func regularTabWithChildren(_ tab: Tab, index: Int) -> some View {
+        VStack(spacing: 2) {
+            regularTabView(tab, index: index, nestingLevel: 0)
+
+            ForEach(browserManager.tabManager.childTabs(of: tab.id, in: space), id: \.id) { childTab in
+                regularTabView(childTab, index: childTab.index, nestingLevel: 1)
+            }
+        }
+    }
+
+    private func regularTabView(_ tab: Tab, index: Int, nestingLevel: Int) -> some View {
         NookDragSourceView(
             item: NookDragItem(tabId: tab.id, title: tab.name, urlString: tab.url.absoluteString),
             tab: tab,
@@ -558,8 +579,10 @@ struct SpaceView: View {
             SpaceTab(
                 tab: tab,
                 action: { handleUserTabActivation(tab) },
-                onClose: { onCloseTab(tab) },
-                onMute: { onMuteTab(tab) }
+                onDone: { onCloseTab(tab) },
+                onToggleLock: { browserManager.tabManager.setLockState(!tab.isLocked, for: tab.id) },
+                onMute: { onMuteTab(tab) },
+                nestingLevel: nestingLevel
             )
         }
         .id(tab.id)
@@ -582,15 +605,18 @@ struct SpaceView: View {
         VStack {
             Button { browserManager.splitManager.enterSplit(with: tab, placeOn: .right, in: windowState) } label: { Label("Open in Split (Right)", systemImage: "rectangle.split.2x1") }
             Button { browserManager.splitManager.enterSplit(with: tab, placeOn: .left, in: windowState) } label: { Label("Open in Split (Left)", systemImage: "rectangle.split.2x1") }
+            if tab.parentTabId == nil {
+                Divider()
+                Button { onMoveTabUp(tab) } label: { Label("Move Up", systemImage: "arrow.up") }
+                    .disabled(isFirstTab(tab))
+                Button { onMoveTabDown(tab) } label: { Label("Move Down", systemImage: "arrow.down") }
+                    .disabled(isLastTab(tab))
+            }
             Divider()
-            Button { onMoveTabUp(tab) } label: { Label("Move Up", systemImage: "arrow.up") }
-                .disabled(isFirstTab(tab))
-            Button { onMoveTabDown(tab) } label: { Label("Move Down", systemImage: "arrow.down") }
-                .disabled(isLastTab(tab))
-            Divider()
+            Button { browserManager.tabManager.setLockState(!tab.isLocked, for: tab.id) } label: { Label(tab.isLocked ? "Unlock Tab" : "Lock Tab", systemImage: tab.isLocked ? "lock.open" : "lock.fill") }
             Button { browserManager.tabManager.pinTabToSpace(tab, spaceId: space.id) } label: { Label("Pin to Space", systemImage: "pin") }
             Button { onPinTab(tab) } label: { Label("Pin Globally", systemImage: "pin.circle") }
-            Button { onCloseTab(tab) } label: { Label("Close tab", systemImage: "xmark") }
+            Button { onCloseTab(tab) } label: { Label("Mark Done", systemImage: "checkmark") }
         }
     }
 
@@ -616,11 +642,11 @@ struct SpaceView: View {
     }
 
     private func isFirstTab(_ tab: Tab) -> Bool {
-        return tabs.first?.id == tab.id
+        return rootTabs.first?.id == tab.id
     }
 
     private func isLastTab(_ tab: Tab) -> Bool {
-        return tabs.last?.id == tab.id
+        return rootTabs.last?.id == tab.id
     }
 
     private var windowDragSpacer: some View {

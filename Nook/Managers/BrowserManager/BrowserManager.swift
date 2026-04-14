@@ -463,6 +463,7 @@ class BrowserManager: ObservableObject {
     func refreshGradientsForSpace(_ space: Space, animate: Bool) {
         guard let windowRegistry = windowRegistry else { return }
         let activeWindowId = windowRegistry.activeWindow?.id
+        let targetGradient = tabManager.displayGradient(for: space)
         
         // Update gradients for all windows using this space (skip incognito)
         for (_, windowState) in windowRegistry.windows {
@@ -471,9 +472,9 @@ class BrowserManager: ObservableObject {
             if windowState.currentSpaceId == space.id {
                 let isActiveWindow = windowState.id == activeWindowId
                 if animate && isActiveWindow {
-                    gradientColorManager.transition(to: space.gradient, duration: 0.45)
+                    gradientColorManager.transition(to: targetGradient, duration: 0.45)
                 } else {
-                    gradientColorManager.setImmediate(space.gradient)
+                    gradientColorManager.setImmediate(targetGradient)
                 }
             }
         }
@@ -485,7 +486,7 @@ class BrowserManager: ObservableObject {
         guard let targetProfileId = windowState.currentProfileId else { return }
         guard !isSwitchingProfile else { return }
         guard currentProfile?.id != targetProfileId else { return }
-        guard let targetProfile = profileManager.profiles.first(where: { $0.id == targetProfileId })
+        guard let targetProfile = profileManager.profile(for: targetProfileId)
         else { return }
         Task { [weak self] in
             await self?.switchToProfile(targetProfile, context: context, in: windowState)
@@ -635,13 +636,13 @@ class BrowserManager: ObservableObject {
             if let spaceId = windowState.currentSpaceId,
                 let space = tabManager.spaces.first(where: { $0.id == spaceId })
             {
-                windowState.currentProfileId = space.profileId ?? currentProfile?.id
+                windowState.currentProfileId = tabManager.effectiveProfileId(for: space) ?? currentProfile?.id
                 // Only animate for the active window
                 let isActiveWindow = windowRegistry.activeWindow?.id == windowState.id
                 if isActiveWindow {
-                    gradientColorManager.transition(to: space.gradient, duration: 0.3)
+                    gradientColorManager.transition(to: tabManager.displayGradient(for: space), duration: 0.3)
                 } else {
-                    gradientColorManager.setImmediate(space.gradient)
+                    gradientColorManager.setImmediate(tabManager.displayGradient(for: space))
                 }
             }
             
@@ -904,7 +905,8 @@ class BrowserManager: ObservableObject {
             ?? windowState.currentProfileId.flatMap { pid in
                 tabManager.spaces.first(where: { $0.profileId == pid })
             }
-        let newTab = tabManager.createNewTab(url: url, in: targetSpace)
+        let parentTab = currentTab(for: windowState)
+        let newTab = tabManager.createNewTab(url: url, in: targetSpace, parentTab: parentTab)
         selectTab(newTab, in: windowState)
     }
 
@@ -991,7 +993,7 @@ class BrowserManager: ObservableObject {
                     }
                 }
             } else {
-                tabManager.removeTab(currentTab.id)
+                _ = tabManager.completeTab(currentTab.id, source: "keyboard")
             }
         } else {
             // Fallback to global current tab for backward compatibility
@@ -1902,9 +1904,9 @@ class BrowserManager: ObservableObject {
         if let spaceId = windowState.currentSpaceId,
             let space = tabManager.spaces.first(where: { $0.id == spaceId })
         {
-            windowState.currentProfileId = space.profileId ?? currentProfile?.id
+            windowState.currentProfileId = tabManager.effectiveProfileId(for: space) ?? currentProfile?.id
             // Set gradient immediately without animation
-            gradientColorManager.setImmediate(space.gradient)
+            gradientColorManager.setImmediate(tabManager.displayGradient(for: space))
         } else {
             // Fallback to default gradient if no space exists
             gradientColorManager.setImmediate(.default)
@@ -1978,8 +1980,8 @@ class BrowserManager: ObservableObject {
         if let spaceId = windowState.currentSpaceId,
             let space = tabManager.spaces.first(where: { $0.id == spaceId })
         {
-            updateGradient(for: windowState, to: space.gradient, animate: true)
-            windowState.currentProfileId = space.profileId ?? currentProfile?.id
+            updateGradient(for: windowState, to: tabManager.displayGradient(for: space), animate: true)
+            windowState.currentProfileId = tabManager.effectiveProfileId(for: space) ?? currentProfile?.id
         } else if windowState.currentSpaceId == nil {
             updateGradient(for: windowState, to: .default, animate: false)
             windowState.currentProfileId = currentProfile?.id
@@ -2039,7 +2041,9 @@ class BrowserManager: ObservableObject {
         )
 
         let profileId =
-            windowState.currentProfileId ?? currentSpace?.profileId ?? currentProfile?.id
+            tabManager.effectiveProfileId(for: currentSpace)
+            ?? windowState.currentProfileId
+            ?? currentProfile?.id
         let essentials = profileId.flatMap { tabManager.essentialTabs(for: $0) } ?? []
         let spacePinned = currentSpace.map { tabManager.spacePinnedTabs(for: $0.id) } ?? []
         let regularTabs = currentSpace.map { tabManager.tabs(in: $0) } ?? []
@@ -2128,14 +2132,14 @@ class BrowserManager: ObservableObject {
 
         // Update the window's current space
         windowState.currentSpaceId = space.id
-        windowState.currentProfileId = space.profileId ?? currentProfile?.id
-        updateGradient(for: windowState, to: space.gradient, animate: true)
+        windowState.currentProfileId = tabManager.effectiveProfileId(for: space) ?? currentProfile?.id
+        updateGradient(for: windowState, to: tabManager.displayGradient(for: space), animate: true)
 
         // Get the active tab for this space
         let spacePinned = tabManager.spacePinnedTabs(for: space.id)
         let regularTabs = tabManager.tabs(in: space)
         let profileEssentials =
-            (space.profileId ?? currentProfile?.id).flatMap { tabManager.essentialTabs(for: $0) }
+            tabManager.effectiveProfileId(for: space).flatMap { tabManager.essentialTabs(for: $0) }
             ?? []
         let allTabsForSpace = profileEssentials + spacePinned + regularTabs
 
@@ -2220,8 +2224,8 @@ class BrowserManager: ObservableObject {
             if let spaceId = windowState.currentSpaceId,
                 let space = tabManager.spaces.first(where: { $0.id == spaceId })
             {
-                updateGradient(for: windowState, to: space.gradient, animate: false)
-                windowState.currentProfileId = space.profileId ?? currentProfile?.id
+                updateGradient(for: windowState, to: tabManager.displayGradient(for: space), animate: false)
+                windowState.currentProfileId = tabManager.effectiveProfileId(for: space) ?? currentProfile?.id
             } else if windowState.currentSpaceId == nil {
                 updateGradient(for: windowState, to: .default, animate: false)
                 windowState.currentProfileId = currentProfile?.id

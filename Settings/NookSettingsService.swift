@@ -8,6 +8,9 @@
 
 import AppKit
 import SwiftUI
+#if canImport(Security)
+import Security
+#endif
 
 public enum SidebarPosition: String, CaseIterable, Identifiable {
     case left
@@ -172,6 +175,8 @@ class NookSettingsService {
     }
 
     init() {
+        Self.removeObsoleteAISettings()
+
         // Register default values
         userDefaults.register(defaults: [
             materialKey: NSVisualEffectView.Material.hudWindow.rawValue,
@@ -221,6 +226,52 @@ class NookSettingsService {
         } else {
             self.siteSearchEntries = SiteSearchEntry.defaultSites
         }
+    }
+
+    private static func removeObsoleteAISettings() {
+        let defaults = UserDefaults.standard
+        let obsoleteKeys = [
+            "settings.geminiApiKey",
+            "settings.geminiModel",
+            "settings.showAIAssistant",
+            "settings.aiProvider",
+            "settings.openRouterApiKey",
+            "settings.openRouterModel",
+            "settings.ollamaEndpoint",
+            "settings.ollamaModel",
+            "settings.webSearchEnabled",
+            "settings.webSearchEngine",
+            "settings.webSearchMaxResults",
+            "settings.webSearchContextSize",
+            "ai_config_migrated_v1"
+        ]
+
+        for key in obsoleteKeys {
+            defaults.removeObject(forKey: key)
+        }
+
+        let appSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first
+        let aiConfigURL = appSupport?
+            .appendingPathComponent("Nook")
+            .appendingPathComponent("ai_config.json")
+        if let aiConfigURL {
+            try? FileManager.default.removeItem(at: aiConfigURL)
+        }
+
+        #if canImport(Security)
+        let keychainService = "com.nook.aiProvider"
+        for providerId in ["gemini", "openrouter", "ollama"] {
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: keychainService,
+                kSecAttrAccount as String: providerId
+            ]
+            SecItemDelete(query as CFDictionary)
+        }
+        #endif
     }
 }
 

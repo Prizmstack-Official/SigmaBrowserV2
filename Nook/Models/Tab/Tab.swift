@@ -43,11 +43,19 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
     var isPinned: Bool = false  // Global pinned (essentials)
     var isSpacePinned: Bool = false  // Space-level pinned
     var folderId: UUID?  // Folder membership for tabs within spacepinned area
+    var parentTabId: UUID?
+    var isLocked: Bool = false
+    var completedAt: Date?
+    var completionSource: String?
     
     // MARK: - Ephemeral State
     /// Whether this tab belongs to an ephemeral/incognito session
     var isEphemeral: Bool {
         return resolveProfile()?.isEphemeral ?? false
+    }
+
+    var isCompleted: Bool {
+        completedAt != nil
     }
 
     // MARK: - Favicon Cache
@@ -279,6 +287,10 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
         favicon: String = "globe",
         spaceId: UUID? = nil,
         index: Int = 0,
+        parentTabId: UUID? = nil,
+        isLocked: Bool = false,
+        completedAt: Date? = nil,
+        completionSource: String? = nil,
         browserManager: BrowserManager? = nil,
         existingWebView: WKWebView? = nil
     ) {
@@ -288,6 +300,10 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
         self.favicon = Image(systemName: favicon)
         self.spaceId = spaceId
         self.index = index
+        self.parentTabId = parentTabId
+        self.isLocked = isLocked
+        self.completedAt = completedAt
+        self.completionSource = completionSource
         self.browserManager = browserManager
         self._existingWebView = existingWebView
         super.init()
@@ -303,7 +319,11 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
         name: String = "New Tab",
         favicon: String = "globe",
         spaceId: UUID? = nil,
-        index: Int = 0
+        index: Int = 0,
+        parentTabId: UUID? = nil,
+        isLocked: Bool = false,
+        completedAt: Date? = nil,
+        completionSource: String? = nil
     ) {
         self.id = id
         self.url = url
@@ -311,6 +331,10 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
         self.favicon = Image(systemName: favicon)
         self.spaceId = spaceId
         self.index = index
+        self.parentTabId = parentTabId
+        self.isLocked = isLocked
+        self.completedAt = completedAt
+        self.completionSource = completionSource
         self.browserManager = nil
         super.init()
 
@@ -706,29 +730,15 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
     func resolveProfile() -> Profile? {
         // First, check if we have a direct profileId assignment (including ephemeral tabs)
         if let pid = profileId {
-            // Check ephemeral profiles first
-            if let windowState = browserManager?.windowRegistry?.windows.values.first(where: { window in
-                window.ephemeralTabs.contains(where: { $0.id == self.id })
-            }),
-               let ephemeralProfile = windowState.ephemeralProfile,
-               ephemeralProfile.id == pid {
-                return ephemeralProfile
-            }
-            // Check regular profiles
-            if let profile = browserManager?.profileManager.profiles.first(where: { $0.id == pid }) {
+            if let profile = browserManager?.profileManager.profile(for: pid) {
                 return profile
             }
         }
         
         // Attempt to resolve via associated space
         if let sid = spaceId,
-            let space = browserManager?.tabManager.spaces.first(where: { $0.id == sid })
-        {
-            if let pid = space.profileId,
-                let profile = browserManager?.profileManager.profiles.first(where: { $0.id == pid })
-            {
+           let profile = browserManager?.tabManager.effectiveProfile(forSpaceId: sid) {
                 return profile
-            }
         }
         // Fallback to the current profile
         if let cp = browserManager?.currentProfile { return cp }
@@ -2900,9 +2910,20 @@ extension Tab: WKScriptMessageHandler {
     }
 
     private func handleCommandClick(url: URL) {
-        // Create a new tab with the URL and focus it
-        browserManager?.tabManager.createNewTab(
-            url: url.absoluteString, in: browserManager?.tabManager.currentSpace)
+        guard let browserManager else { return }
+
+        // Create a new tab in the same workspace and focus it in the active window.
+        let newTab = browserManager.tabManager.createNewTab(
+            url: url.absoluteString,
+            in: browserManager.tabManager.currentSpace,
+            parentTab: self
+        )
+
+        if let activeWindow = browserManager.windowRegistry?.activeWindow {
+            browserManager.selectTab(newTab, in: activeWindow)
+        } else {
+            browserManager.selectTab(newTab)
+        }
     }
 
     private func handleOAuthRequest(message: WKScriptMessage) {
@@ -3096,7 +3117,10 @@ extension Tab: WKUIDelegate {
 
         // Create a new tab to manage this webView
         let space = bm.tabManager.currentSpace
-        let newTab = bm.tabManager.createPopupTab(in: space)
+        let newTab = bm.tabManager.createPopupTab(in: space, parentTab: self)
+        if let activeWindow = bm.windowRegistry?.activeWindow {
+            bm.selectTab(newTab, in: activeWindow)
+        }
 
         // Set up the new webView with the same delegates and settings as the current tab
         newWebView.navigationDelegate = newTab

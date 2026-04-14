@@ -17,6 +17,8 @@ final class ProfileManager: ObservableObject {
     // MARK: - Ephemeral Profiles (Incognito)
     /// Active ephemeral profiles (one per incognito window)
     private var ephemeralProfiles: [UUID: Profile] = [:]  // windowId -> profile
+    /// Active ephemeral profiles scoped to private workspaces
+    private var workspaceEphemeralProfiles: [UUID: Profile] = [:]  // spaceId -> profile
     
     init(context: ModelContext) {
         self.context = context
@@ -120,6 +122,19 @@ final class ProfileManager: ObservableObject {
         print("🔒 [ProfileManager] Created ephemeral profile for window: \(windowId)")
         return profile
     }
+
+    /// Create or reuse an ephemeral profile for a private workspace.
+    func ensureWorkspaceEphemeralProfile(for space: Space) -> Profile {
+        if let existing = workspaceEphemeralProfiles[space.id] {
+            return existing
+        }
+
+        let profile = Profile.createEphemeral()
+        profile.name = "\(space.name) Private"
+        workspaceEphemeralProfiles[space.id] = profile
+        print("🔒 [ProfileManager] Created ephemeral profile for workspace: \(space.id)")
+        return profile
+    }
     
     /// Remove an ephemeral profile when incognito window closes
     /// This destroys the data store to ensure complete privacy
@@ -161,9 +176,56 @@ final class ProfileManager: ObservableObject {
     func ephemeralProfile(for windowId: UUID) -> Profile? {
         return ephemeralProfiles[windowId]
     }
+
+    /// Get ephemeral profile for a workspace.
+    func workspaceEphemeralProfile(for spaceId: UUID) -> Profile? {
+        workspaceEphemeralProfiles[spaceId]
+    }
+
+    /// Remove an ephemeral profile when a private workspace is disabled or deleted.
+    func removeWorkspaceEphemeralProfile(for spaceId: UUID) async {
+        guard let profile = workspaceEphemeralProfiles.removeValue(forKey: spaceId) else { return }
+
+        print("🔒 [ProfileManager] Removing workspace ephemeral profile: \(profile.id) for space: \(spaceId)")
+
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            var resumed = false
+            let resumeSafely: () -> Void = {
+                guard !resumed else { return }
+                resumed = true
+                continuation.resume()
+            }
+
+            Task {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                if !resumed {
+                    print("⚠️ [ProfileManager] Timeout destroying workspace ephemeral profile: \(profile.id)")
+                    resumeSafely()
+                }
+            }
+
+            profile.destroyEphemeralDataStore {
+                resumeSafely()
+            }
+        }
+    }
+
+    /// Resolve both persistent and ephemeral profiles through a single API.
+    func profile(for profileId: UUID) -> Profile? {
+        if let profile = profiles.first(where: { $0.id == profileId }) {
+            return profile
+        }
+        if let profile = ephemeralProfiles.values.first(where: { $0.id == profileId }) {
+            return profile
+        }
+        return workspaceEphemeralProfiles.values.first(where: { $0.id == profileId })
+    }
     
     /// Check if a profile ID is an ephemeral profile
     func isEphemeralProfile(_ profileId: UUID) -> Bool {
-        return ephemeralProfiles.values.contains { $0.id == profileId }
+        if ephemeralProfiles.values.contains(where: { $0.id == profileId }) {
+            return true
+        }
+        return workspaceEphemeralProfiles.values.contains { $0.id == profileId }
     }
 }

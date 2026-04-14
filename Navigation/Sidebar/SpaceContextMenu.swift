@@ -37,6 +37,7 @@ struct SpaceContextMenu: View {
                     Label(profile.name, systemImage: profile.icon).tag(profile.id)
                 }
             }
+            .disabled(space.usesSeparateProfile || space.isWorkspaceIncognito)
 
             Divider()
 
@@ -124,18 +125,18 @@ struct SpaceContextMenu: View {
 
     private var currentProfileName: String {
         guard let profileId = space.profileId,
-              let profile = browserManager.profileManager.profiles.first(where: { $0.id == profileId })
+              let profile = browserManager.profileManager.profile(for: profileId)
         else {
-            return browserManager.profileManager.profiles.first?.name ?? "Default"
+            return space.isWorkspaceIncognito ? "Private Workspace" : (browserManager.profileManager.profiles.first?.name ?? "Default")
         }
         return profile.name
     }
 
     private var currentProfileIcon: String {
         guard let profileId = space.profileId,
-              let profile = browserManager.profileManager.profiles.first(where: { $0.id == profileId })
+              let profile = browserManager.profileManager.profile(for: profileId)
         else {
-            return browserManager.profileManager.profiles.first?.icon ?? "person.circle"
+            return space.isWorkspaceIncognito ? "eye.slash" : (browserManager.profileManager.profiles.first?.icon ?? "person.circle")
         }
         return profile.icon
     }

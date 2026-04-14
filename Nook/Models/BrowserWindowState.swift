@@ -119,6 +119,9 @@ class BrowserWindowState {
         if isIncognito {
             return SpaceGradient.incognito
         }
+        if currentSpace?.isWorkspaceIncognito == true {
+            return SpaceGradient.incognito
+        }
         return currentSpace?.gradient ?? .default
     }
 

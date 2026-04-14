@@ -262,7 +262,8 @@ struct TabFolderView: View {
                 action: {
                     onActivateTab(tab)
                 },
-                onClose: { browserManager.tabManager.removeTab(tab.id) },
+                onDone: { _ = browserManager.tabManager.completeTab(tab.id) },
+                onToggleLock: { browserManager.tabManager.setLockState(!tab.isLocked, for: tab.id) },
                 onMute: { tab.toggleMute() }
             )
             .padding(.leading, 12)
@@ -333,9 +334,9 @@ struct TabFolderView: View {
             Divider()
 
             Button(action: {
-                browserManager.tabManager.removeTab(tab.id)
+                _ = browserManager.tabManager.completeTab(tab.id)
             }) {
-                Label("Close Tab", systemImage: "xmark.circle")
+                Label("Mark Done", systemImage: "checkmark.circle")
             }
         }
     }

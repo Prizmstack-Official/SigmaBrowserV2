@@ -117,8 +117,8 @@ struct SpaceTitle: View {
                             SpaceEditDialog(
                                 space: space,
                                 mode: .icon,
-                                onSave: { newName, newIcon, newProfileId in
-                                    updateSpace(name: newName, icon: newIcon, profileId: newProfileId)
+                                onSave: { draft in
+                                    updateSpace(using: draft)
                                 },
                                 onCancel: {
                                     browserManager.dialogManager.closeDialog()
@@ -186,8 +186,8 @@ struct SpaceTitle: View {
                         SpaceEditDialog(
                             space: space,
                             mode: .icon,
-                            onSave: { newName, newIcon, newProfileId in
-                                updateSpace(name: newName, icon: newIcon, profileId: newProfileId)
+                            onSave: { draft in
+                                updateSpace(using: draft)
                             },
                             onCancel: {
                                 browserManager.dialogManager.closeDialog()
@@ -266,21 +266,9 @@ struct SpaceTitle: View {
         browserManager.tabManager.assign(spaceId: space.id, toProfile: id)
     }
 
-    private func updateSpace(name: String, icon: String, profileId: UUID?) {
-        do {
-            if icon != space.icon {
-                try browserManager.tabManager.updateSpaceIcon(spaceId: space.id, icon: icon)
-            }
-            if name != space.name {
-                try browserManager.tabManager.renameSpace(spaceId: space.id, newName: name)
-            }
-            if profileId != space.profileId, let profileId = profileId {
-                browserManager.tabManager.assign(spaceId: space.id, toProfile: profileId)
-            }
-            browserManager.dialogManager.closeDialog()
-        } catch {
-            print("⚠️ Failed to update space \(space.id.uuidString):", error)
-        }
+    private func updateSpace(using draft: SpaceSettingsDraft) {
+        browserManager.tabManager.updateSpaceSettings(spaceId: space.id, using: draft)
+        browserManager.dialogManager.closeDialog()
     }
 
     private func resolvedProfileName(for id: UUID?) -> String? {
