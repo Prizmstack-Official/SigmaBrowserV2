@@ -14,6 +14,7 @@ struct SidebarHeader: View {
     @Environment(CommandPalette.self) private var commandPalette
     @Environment(\.nookSettings) var nookSettings
     let isSidebarHovered: Bool
+    var showMacButtons: Bool = true
     @State private var sidebarWidth: CGFloat = 0
 
     var body: some View {
@@ -33,7 +34,7 @@ struct SidebarHeader: View {
     }
 
     private var windowControls: some View {
-        SidebarWindowControlsView()
+        SidebarWindowControlsView(showMacButtons: showMacButtons)
             .environmentObject(browserManager)
             .environment(windowState)
             .environment(commandPalette)
@@ -61,10 +62,11 @@ struct SidebarWindowControlsView: View {
     @Environment(CommandPalette.self) private var commandPalette
     @Environment(\.nookSettings) var nookSettings
     @Environment(\.colorScheme) private var colorScheme
+    var showMacButtons: Bool = true
 
     var body: some View {
         HStack(spacing: 8) {
-            if nookSettings.sidebarPosition == .left {
+            if showMacButtons && nookSettings.sidebarPosition == .left {
                 MacButtonsView()
                     .frame(width: 76)
             }
@@ -83,7 +85,7 @@ struct SidebarWindowControlsView: View {
 
             Spacer()
 
-            if nookSettings.sidebarPosition == .right {
+            if showMacButtons && nookSettings.sidebarPosition == .right {
                 MacButtonsView()
                     .frame(width: 76)
             }

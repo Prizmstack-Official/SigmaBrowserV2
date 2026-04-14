@@ -87,7 +87,7 @@ struct SpacesSideBarView: View {
 
     private func sidebarContentPanel(effectiveProfileId: UUID?) -> some View {
         VStack(spacing: 14) {
-            SidebarHeader(isSidebarHovered: isSidebarHovered)
+            SidebarHeader(isSidebarHovered: isSidebarHovered, showMacButtons: false)
                 .environmentObject(browserManager)
                 .environment(windowState)
 
@@ -130,7 +130,9 @@ struct SpacesSideBarView: View {
     }
 
     private var sidebarRail: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
+            railWindowControls
+
             SpacesList(
                 axis: .vertical,
                 itemSideLength: LexonTheme.sidebarRailItemSize
@@ -153,10 +155,21 @@ struct SpacesSideBarView: View {
                 .foregroundStyle(LexonTheme.secondaryText(for: colorScheme))
             }
         }
-        .padding(.top, SidebarLayoutMetrics.railTopInset)
+        .padding(.top, 8)
         .padding(.bottom, 10)
         .frame(width: LexonTheme.sidebarRailWidth)
         .frame(maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var railWindowControls: some View {
+        if nookSettings.sidebarPosition == .left {
+            MacButtonsView()
+                .frame(width: LexonTheme.sidebarRailWidth, height: 28, alignment: .leading)
+        } else {
+            Color.clear
+                .frame(height: 28)
+        }
     }
 
     private func updateSidebarScreenFrame(_ geo: GeometryProxy) {

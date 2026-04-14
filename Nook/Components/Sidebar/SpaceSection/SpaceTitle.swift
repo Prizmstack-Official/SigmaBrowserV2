@@ -5,7 +5,7 @@ struct SpaceTitle: View {
     @Environment(\.colorScheme) var colorScheme
 
     let space: Space
-    var iconSize: CGFloat = 20
+    var iconSize: CGFloat = 16
 
     @State private var isHovering: Bool = false
     @State private var isRenaming: Bool = false
@@ -20,9 +20,11 @@ struct SpaceTitle: View {
 
     var body: some View {
         HStack(spacing: 10) {
+            titleAccessory
+
             if isRenaming {
                 TextField("", text: $draftName)
-                    .font(.system(size: 24, weight: .bold))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(textColor)
                     .textFieldStyle(PlainTextFieldStyle())
                     .autocorrectionDisabled()
@@ -40,18 +42,14 @@ struct SpaceTitle: View {
                         cancelRename()
                     }
             } else {
-                HStack(spacing: 6) {
-                    Text(space.name)
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(textColor)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .onTapGesture(count: 2) {
-                            startRenaming()
-                        }
-
-                    titleAccessory
-                }
+                Text(space.name)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(textColor)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .onTapGesture(count: 2) {
+                        startRenaming()
+                    }
             }
 
             Spacer()
@@ -107,10 +105,10 @@ struct SpaceTitle: View {
             }
             dragSession.pendingDrop = nil
         }
-        .padding(.leading, 2)
+        .padding(.leading, 4)
         .padding(.trailing, 2)
-        .padding(.top, 10)
-        .padding(.bottom, 8)
+        .padding(.top, 6)
+        .padding(.bottom, 6)
         .frame(maxWidth: .infinity)
         .background(hoverColor)
         .clipShape(RoundedRectangle(cornerRadius: 14))
@@ -195,7 +193,7 @@ struct SpaceTitle: View {
                         .font(.system(size: iconSize))
                 } else {
                     Image(systemName: space.icon)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(LexonTheme.secondaryText(for: colorScheme))
                 }
             }

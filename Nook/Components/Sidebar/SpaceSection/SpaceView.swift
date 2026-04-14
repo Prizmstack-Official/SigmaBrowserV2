@@ -457,12 +457,13 @@ struct SpaceView: View {
                     .font(.system(size: 16, weight: .medium))
                 Spacer()
             }
-            .foregroundStyle(LexonTheme.secondaryText(for: colorScheme))
+            .foregroundStyle(LexonTheme.tertiaryText(for: colorScheme))
+            .opacity(isNewTabHovered ? 0.8 : 0.55)
             .padding(.horizontal, 12)
             .frame(height: 42)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isNewTabHovered ? LexonTheme.hoverFill(for: colorScheme) : Color.clear)
+                    .fill(isNewTabHovered ? LexonTheme.hoverFill(for: colorScheme).opacity(0.7) : Color.clear)
             )
         }
         .buttonStyle(.plain)
