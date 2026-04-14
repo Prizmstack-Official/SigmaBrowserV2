@@ -18,8 +18,8 @@ struct SidebarHoverOverlayView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     private let cornerRadius: CGFloat = 12
-    private let horizontalInset: CGFloat = 7
-    private let verticalInset: CGFloat = 7
+    private let horizontalInset: CGFloat = 0
+    private let verticalInset: CGFloat = 0
 
     var body: some View {
         // Only render overlay plumbing when the real sidebar is collapsed
@@ -48,7 +48,7 @@ struct SidebarHoverOverlayView: View {
                         .environment(windowState)
                         .environment(commandPalette)
                         .environmentObject(browserManager.gradientColorManager)
-                        .frame(maxHeight: .infinity)
+                        .frame(maxHeight: overlayHeight, alignment: .top)
                         .background{
                             SpaceGradientBackgroundView()
                                 .environmentObject(browserManager)
@@ -62,7 +62,8 @@ struct SidebarHoverOverlayView: View {
                         }
                         .alwaysArrowCursor()
                         .padding(nookSettings.sidebarPosition == .left ? .leading : .trailing, horizontalInset)
-                        .padding(.vertical, verticalInset)
+                        .padding(.top, overlayTopInset)
+                        .padding(.bottom, verticalInset)
                         .transition(
                             .move(edge: nookSettings.sidebarPosition == .left ? .leading : .trailing)
                                 .combined(with: .opacity)
@@ -72,5 +73,16 @@ struct SidebarHoverOverlayView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: nookSettings.sidebarPosition == .left ? .topLeading : .topTrailing)
             // Container remains passive; only overlay/hotspot intercept
         }
+    }
+
+    private var overlayTopInset: CGFloat {
+        nookSettings.topBarAddressView ? TopBarMetrics.height : 0
+    }
+
+    private var overlayHeight: CGFloat {
+        let contentHeight = windowState.window?.contentView?.bounds.height
+            ?? NSScreen.main?.visibleFrame.height
+            ?? 800
+        return max(contentHeight - overlayTopInset, 0)
     }
 }
