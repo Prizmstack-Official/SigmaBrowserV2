@@ -18,12 +18,9 @@ struct SidebarHeader: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            if nookSettings.topBarAddressView {
-                windowControls
-            }
+            windowControls
 
             if !nookSettings.topBarAddressView {
-                workspaceActions
                 navigationButtons
                 urlBar
             }
@@ -37,14 +34,6 @@ struct SidebarHeader: View {
 
     private var windowControls: some View {
         SidebarWindowControlsView()
-            .environmentObject(browserManager)
-            .environment(windowState)
-            .environment(commandPalette)
-            .padding(.horizontal, 8)
-    }
-
-    private var workspaceActions: some View {
-        SidebarWorkspaceActionButtons()
             .environmentObject(browserManager)
             .environment(windowState)
             .environment(commandPalette)
@@ -73,9 +62,11 @@ struct SidebarWindowControlsView: View {
     @Environment(\.nookSettings) var nookSettings
 
     var body: some View {
-        HStack(spacing: 8) {
-            MacButtonsView()
-                .frame(width: 70)
+        HStack(spacing: 6) {
+            if nookSettings.sidebarPosition == .left {
+                MacButtonsView()
+                    .frame(width: 70)
+            }
 
             Button("Toggle Sidebar", systemImage: nookSettings.sidebarPosition == .left ? "sidebar.left" : "sidebar.right") {
                 browserManager.toggleSidebar(for: windowState)
@@ -90,6 +81,11 @@ struct SidebarWindowControlsView: View {
                 .environment(commandPalette)
 
             Spacer()
+
+            if nookSettings.sidebarPosition == .right {
+                MacButtonsView()
+                    .frame(width: 70)
+            }
         }
         .frame(height: 28)
     }

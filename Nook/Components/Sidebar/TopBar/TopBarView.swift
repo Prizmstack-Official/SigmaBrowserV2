@@ -449,19 +449,10 @@ struct BrowserUtilityButtonsView: View {
     @EnvironmentObject var browserManager: BrowserManager
     @Environment(BrowserWindowState.self) private var windowState
     let navButtonColor: Color
-    let spacesWidth: CGFloat
+    var spacesWidth: CGFloat = 0
 
     var body: some View {
         HStack(spacing: 6) {
-            if !windowState.isIncognito {
-                SpacesList(axis: .horizontal)
-                    .frame(width: spacesWidth, height: 40)
-                    .environmentObject(browserManager)
-                    .environment(windowState)
-
-                newSpaceButton
-            }
-
             historyButton
             downloadsButton
         }
@@ -492,44 +483,6 @@ struct BrowserUtilityButtonsView: View {
                 .environmentObject(browserManager)
                 .offset(x: 6, y: -6)
         }
-    }
-
-    private var newSpaceButton: some View {
-        Menu {
-            Button("New Space", systemImage: "square.grid.2x2") {
-                showSpaceCreationDialog()
-            }
-
-            Button("New Folder", systemImage: "folder.badge.plus") {
-                if let currentSpace = browserManager.tabManager.currentSpace {
-                    browserManager.tabManager.createFolder(for: currentSpace.id)
-                }
-            }
-        } label: {
-            BrowserUtilityPanelIcon(
-                title: "New Space",
-                systemImage: "plus",
-                navButtonColor: navButtonColor,
-                isActive: false
-            )
-        }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-    }
-
-    private func showSpaceCreationDialog() {
-        browserManager.dialogManager.showDialog(
-            SpaceCreationDialog(
-                onCreate: { draft in
-                    let newSpace = browserManager.tabManager.createSpace(from: draft)
-                    browserManager.setActiveSpace(newSpace, in: windowState)
-                    browserManager.dialogManager.closeDialog()
-                },
-                onCancel: {
-                    browserManager.dialogManager.closeDialog()
-                }
-            )
-        )
     }
 }
 

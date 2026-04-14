@@ -76,58 +76,49 @@ struct NavButtonsView: View {
             
             Spacer()
             
-            HStack(alignment: .center, spacing: 8) {
-                if shouldCollapseNavigation {
+            if shouldCollapseNavigation {
+                collapsedMenu(
+                    includeNavigation: true,
+                    includeRefresh: shouldCollapseRefresh
+                )
+            } else {
+                HStack(alignment: .center, spacing: 8) {
+                    Button("Go Back", systemImage: "arrow.backward", action: goBack)
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(NavButtonStyle())
+                        .foregroundStyle(Color.primary)
+                        .disabled(!tabWrapper.canGoBack)
+                        .contextMenu {
+                            NavigationHistoryContextMenu(
+                                historyType: .back,
+                                windowState: windowState
+                            )
+                        }
+                    
+                    Button("Go Forward", systemImage: "arrow.forward", action: goForward)
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(NavButtonStyle())
+                        .foregroundStyle(Color.primary)
+                        .disabled(!tabWrapper.canGoForward)
+                        .contextMenu {
+                            NavigationHistoryContextMenu(
+                                historyType: .forward,
+                                windowState: windowState
+                            )
+                        }
+                }
+                
+                if shouldCollapseRefresh {
                     collapsedMenu(
-                        includeNavigation: true,
+                        includeNavigation: false,
                         includeRefresh: shouldCollapseRefresh
                     )
-                } else {
-                    HStack(alignment: .center, spacing: 8) {
-                        Button("Go Back", systemImage: "arrow.backward", action: goBack)
-                            .labelStyle(.iconOnly)
-                            .buttonStyle(NavButtonStyle())
-                            .foregroundStyle(Color.primary)
-                            .disabled(!tabWrapper.canGoBack)
-                            .contextMenu {
-                                NavigationHistoryContextMenu(
-                                    historyType: .back,
-                                    windowState: windowState
-                                )
-                            }
-                        
-                        Button("Go Forward", systemImage: "arrow.forward", action: goForward)
-                            .labelStyle(.iconOnly)
-                            .buttonStyle(NavButtonStyle())
-                            .foregroundStyle(Color.primary)
-                            .disabled(!tabWrapper.canGoForward)
-                            .contextMenu {
-                                NavigationHistoryContextMenu(
-                                    historyType: .forward,
-                                    windowState: windowState
-                                )
-                            }
-                    }
-                    
-                    if shouldCollapseRefresh {
-                        collapsedMenu(
-                            includeNavigation: false,
-                            includeRefresh: shouldCollapseRefresh
-                        )
-                    }
                 }
-                
-                BrowserUtilityButtonsView(
-                    navButtonColor: .primary,
-                    spacesWidth: 72
-                )
-                .environmentObject(browserManager)
-                .environment(windowState)
-                
-                if !sidebarOnLeft {
-                    MacButtonsView()
-                        .frame(width: 70)
-                }
+            }
+            
+            if !sidebarOnLeft {
+                MacButtonsView()
+                    .frame(width: 70)
             }
         }
         .frame(maxWidth: .infinity)

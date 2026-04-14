@@ -47,7 +47,7 @@ struct SpacesSideBarView: View {
         let essentialsCount = effectiveProfileId.map { browserManager.tabManager.essentialTabs(for: $0).count } ?? 0
         let shouldAnimate = (windowRegistry.activeWindow?.id == windowState.id) && !browserManager.isTransitioningProfile
 
-        return HStack(spacing: SidebarLayoutMetrics.shellSpacing) {
+        return HStack(spacing: 0) {
             if nookSettings.sidebarPosition == .left {
                 sidebarRail
                 sidebarContentPanel(effectiveProfileId: effectiveProfileId)
@@ -56,8 +56,18 @@ struct SpacesSideBarView: View {
                 sidebarRail
             }
         }
-        .padding(SidebarLayoutMetrics.shellPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: LexonTheme.panelCornerRadius, style: .continuous)
+                .fill(LexonTheme.sidebarShell(for: colorScheme))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: LexonTheme.panelCornerRadius, style: .continuous)
+                .stroke(LexonTheme.border(for: colorScheme), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: LexonTheme.panelCornerRadius, style: .continuous))
+        .shadow(color: LexonTheme.shadow(for: colorScheme), radius: 22, x: 0, y: 10)
+        .padding(SidebarLayoutMetrics.shellPadding)
         .background(
             GeometryReader { geo in
                 Color.clear
@@ -73,15 +83,6 @@ struct SpacesSideBarView: View {
             shouldAnimate ? .easeInOut(duration: 0.18) : nil,
             value: essentialsCount
         )
-        .background(
-            RoundedRectangle(cornerRadius: LexonTheme.outerCornerRadius, style: .continuous)
-                .fill(LexonTheme.sidebarShell(for: colorScheme))
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: LexonTheme.outerCornerRadius, style: .continuous)
-                .stroke(LexonTheme.border(for: colorScheme), lineWidth: 1)
-        }
-        .shadow(color: LexonTheme.shadow(for: colorScheme), radius: 22, x: 0, y: 10)
     }
 
     private func sidebarContentPanel(effectiveProfileId: UUID?) -> some View {
@@ -126,18 +127,10 @@ struct SpacesSideBarView: View {
         }
         .padding(SidebarLayoutMetrics.panelInset)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: LexonTheme.panelCornerRadius, style: .continuous)
-                .fill(LexonTheme.contentPanelFill(for: colorScheme))
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: LexonTheme.panelCornerRadius, style: .continuous)
-                .stroke(LexonTheme.border(for: colorScheme), lineWidth: 1)
-        }
     }
 
     private var sidebarRail: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             SpacesList(
                 axis: .vertical,
                 itemSideLength: LexonTheme.sidebarRailItemSize
@@ -160,18 +153,9 @@ struct SpacesSideBarView: View {
                 .foregroundStyle(LexonTheme.secondaryText(for: colorScheme))
             }
         }
-        .padding(.vertical, SidebarLayoutMetrics.panelInset)
-        .padding(
-            .horizontal,
-            max((LexonTheme.sidebarRailWidth - LexonTheme.sidebarRailItemSize) / 2, 0)
-        )
-        .frame(width: LexonTheme.sidebarRailWidth, maxHeight: .infinity)
-        .background(LexonTheme.railFill(for: colorScheme))
-        .overlay(alignment: nookSettings.sidebarPosition == .left ? .trailing : .leading) {
-            Rectangle()
-                .fill(LexonTheme.border(for: colorScheme))
-                .frame(width: 1)
-        }
+        .padding(.vertical, 10)
+        .frame(width: LexonTheme.sidebarRailWidth)
+        .frame(maxHeight: .infinity)
     }
 
     private func updateSidebarScreenFrame(_ geo: GeometryProxy) {
