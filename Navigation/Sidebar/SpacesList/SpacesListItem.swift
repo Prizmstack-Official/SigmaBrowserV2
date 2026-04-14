@@ -62,6 +62,7 @@ struct SpacesListItem: View {
         .foregroundStyle(LexonTheme.primaryText(for: colorScheme))
         .layoutPriority(isActive ? 1 : 0)
         .opacity(isFaded ? 0.3 : 1.0)
+        .help(space.name)
         .onHover { hovering in
             isHovering = hovering
             onHoverChange?(hovering)

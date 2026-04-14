@@ -5,6 +5,7 @@
 //  Created by Jonathan Caudill on 15/08/2025.
 //
 
+import AuthenticationServices
 import SwiftUI
 import WebKit
 
@@ -22,6 +23,10 @@ struct PrivacySettingsView: View {
 
         return
         VStack(alignment: .leading, spacing: 20) {
+            // Passkeys Section
+            PasskeySettingsSection(passkeyManager: browserManager.passkeyManager)
+            
+            Divider()
             // Cookie Management Section
             VStack(alignment: .leading, spacing: 12) {
                 Text("Cookie Management")
@@ -450,6 +455,117 @@ struct PrivacySettingsView: View {
         formatter.allowedUnits = [.useAll]
         formatter.countStyle = .file
         return formatter.string(fromByteCount: bytes)
+    }
+}
+
+// MARK: - Passkey Settings Section
+
+private struct PasskeySettingsSection: View {
+    @ObservedObject var passkeyManager: PasskeyManager
+    @State private var isRequesting = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Passkeys")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: statusIcon)
+                        .foregroundColor(statusColor)
+                    Text("Passkey Access")
+                        .fontWeight(.medium)
+                    Spacer()
+                    Text(statusLabel)
+                        .foregroundColor(.secondary)
+                }
+
+                Text(statusDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if passkeyManager.authorizationState == .notDetermined ||
+                   passkeyManager.authorizationState == .denied {
+                    HStack {
+                        Button(actionLabel) {
+                            requestAccess()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isRequesting)
+
+                        if isRequesting {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+
+                        Spacer()
+                    }
+                }
+            }
+            .padding()
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(8)
+        }
+    }
+
+    private var statusIcon: String {
+        switch passkeyManager.authorizationState {
+        case .authorized: return "checkmark.shield.fill"
+        case .denied: return "xmark.shield.fill"
+        case .notDetermined: return "questionmark.shield"
+        case .unavailable: return "exclamationmark.triangle"
+        }
+    }
+
+    private var statusColor: Color {
+        switch passkeyManager.authorizationState {
+        case .authorized: return .green
+        case .denied: return .red
+        case .notDetermined: return .orange
+        case .unavailable: return .gray
+        }
+    }
+
+    private var statusLabel: String {
+        switch passkeyManager.authorizationState {
+        case .authorized: return "Authorized"
+        case .denied: return "Denied"
+        case .notDetermined: return "Not Configured"
+        case .unavailable: return "Unavailable"
+        }
+    }
+
+    private var statusDescription: String {
+        switch passkeyManager.authorizationState {
+        case .authorized:
+            return "Lexon Browser can use passkeys stored on this device and in third-party credential managers."
+        case .denied:
+            return "Passkey access was denied. You can grant access in System Settings > Passwords."
+        case .notDetermined:
+            return "Grant Lexon Browser access to passkeys for passwordless sign-in on supported websites."
+        case .unavailable:
+            return "Passkeys require macOS 13.3 or later."
+        }
+    }
+
+    private var actionLabel: String {
+        passkeyManager.authorizationState == .denied ? "Open System Settings" : "Enable Passkeys"
+    }
+
+    private func requestAccess() {
+        if passkeyManager.authorizationState == .denied {
+            // Open System Settings > Passwords when previously denied
+            if let url = URL(string: "x-apple.systempreferences:com.apple.Passwords-Settings.extension") {
+                NSWorkspace.shared.open(url)
+            }
+            return
+        }
+
+        isRequesting = true
+        Task {
+            await passkeyManager.requestAuthorizationIfNeeded()
+            isRequesting = false
+        }
     }
 }
 

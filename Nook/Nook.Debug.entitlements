@@ -6,6 +6,12 @@
 	<string>development</string>
 	<key>com.apple.developer.authentication-services.autofill-credential-provider</key>
 	<true/>
+	<!--
+		com.apple.developer.web-browser.public-key-credential requires Apple approval.
+		Add the key below once the capability is approved for the provisioning profile:
+		<key>com.apple.developer.web-browser.public-key-credential</key>
+		<true/>
+	-->
 	<key>com.apple.security.automation.apple-events</key>
 	<true/>
 	<key>com.apple.security.device.bluetooth</key>

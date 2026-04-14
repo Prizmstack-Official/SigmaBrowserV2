@@ -394,6 +394,7 @@ class BrowserManager: ObservableObject {
     var dialogManager: DialogManager
     var downloadManager: DownloadManager
     var authenticationManager: AuthenticationManager
+    var passkeyManager: PasskeyManager
     var historyManager: HistoryManager
     var cookieManager: CookieManager
     var cacheManager: CacheManager
@@ -527,6 +528,7 @@ class BrowserManager: ObservableObject {
         self.dialogManager = DialogManager()
         self.downloadManager = DownloadManager.shared
         self.authenticationManager = AuthenticationManager()
+        self.passkeyManager = PasskeyManager()
         // Initialize managers with current profile context for isolation
         self.historyManager = HistoryManager(context: modelContext, profileId: initialProfile?.id)
         self.cookieManager = CookieManager(dataStore: initialProfile?.dataStore)
@@ -569,6 +571,13 @@ class BrowserManager: ObservableObject {
         self.peekManager.attach(browserManager: self)
         bindPeekManagerUpdates()
         self.authenticationManager.attach(browserManager: self)
+        self.passkeyManager.attach(browserManager: self)
+
+        // Request passkey authorization on first launch (deferred to avoid blocking init)
+        Task { [weak self] in
+            await self?.passkeyManager.requestAuthorizationIfNeeded()
+        }
+
         // Migrate legacy history entries (with nil profile) to default profile to avoid cross-profile leakage
         self.migrateUnassignedDataToDefaultProfile()
         loadSidebarSettings()
