@@ -221,7 +221,7 @@ struct TopBarView: View {
     }
 
     private var shouldShowWindowButtonsInTopBar: Bool {
-        !windowState.isSidebarVisible && nookSettings.sidebarPosition == .left
+        true
     }
 
     private var urlBar: some View {

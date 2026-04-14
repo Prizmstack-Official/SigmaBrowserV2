@@ -162,21 +162,26 @@ struct WindowView: View {
 
     @ViewBuilder
     private func SidebarWebViewStack() -> some View {
-        let sidebarVisible = windowState.isSidebarVisible
-        let sidebarOnRight = nookSettings.sidebarPosition == .right
-        let sidebarOnLeft = nookSettings.sidebarPosition == .left
-        
-        HStack(spacing: 0) {
-            if nookSettings.sidebarPosition == .left {
-                SpacesSidebar()
-                WebContent()
-            } else {
-                WebContent()
-                SpacesSidebar()
+        if nookSettings.topBarAddressView {
+            WebContent()
+                .padding(.horizontal, 8)
+        } else {
+            let sidebarVisible = windowState.isSidebarVisible
+            let sidebarOnRight = nookSettings.sidebarPosition == .right
+            let sidebarOnLeft = nookSettings.sidebarPosition == .left
+            
+            HStack(spacing: 0) {
+                if nookSettings.sidebarPosition == .left {
+                    SpacesSidebar()
+                    WebContent()
+                } else {
+                    WebContent()
+                    SpacesSidebar()
+                }
             }
+            .padding(.trailing, sidebarVisible && sidebarOnRight ? 0 : 8)
+            .padding(.leading, sidebarVisible && sidebarOnLeft ? 0 : 8)
         }
-        .padding(.trailing, sidebarVisible && sidebarOnRight ? 0 : 8)
-        .padding(.leading, sidebarVisible && sidebarOnLeft ? 0 : 8)
     }
 
     @ViewBuilder
