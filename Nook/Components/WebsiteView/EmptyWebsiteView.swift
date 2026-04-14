@@ -17,13 +17,12 @@ struct EmptyWebsiteView: View {
             ZStack {
                 // Match the exact background and styling of the real webview
                 Color(nsColor: .windowBackgroundColor).opacity(0.2)
-                    .clipShape(RoundedRectangle(cornerRadius: {
-                        if #available(macOS 26.0, *) {
-                            return 12
-                        } else {
-                            return 6
-                        }
-                    }(), style: .continuous))
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius: LexonTheme.controlCornerRadius,
+                            style: .continuous
+                        )
+                    )
                     .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 0)
 
                 VStack(spacing: 16) {

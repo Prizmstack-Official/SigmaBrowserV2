@@ -165,6 +165,7 @@ struct WindowView: View {
         if nookSettings.topBarAddressView {
             WebContent()
                 .padding(.horizontal, 8)
+                .padding(.top, 8)
         } else {
             let sidebarVisible = windowState.isSidebarVisible
             let sidebarOnRight = nookSettings.sidebarPosition == .right
@@ -263,7 +264,7 @@ struct WindowView: View {
 
     @ViewBuilder
     private var topBarContentRegion: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: topBarContentSpacing) {
             if shouldShowInlineSidebar && nookSettings.sidebarPosition == .left {
                 inlineSidebar
             }
@@ -305,6 +306,10 @@ struct WindowView: View {
 
     private var shouldShowInlineSidebar: Bool {
         nookSettings.topBarAddressView && (windowState.isSidebarVisible || hoverSidebarManager.isOverlayVisible)
+    }
+
+    private var topBarContentSpacing: CGFloat {
+        shouldShowInlineSidebar ? TopBarMetrics.horizontalPadding : 0
     }
 
     private func websiteColumnClipShape(cornerRadius: CGFloat, hasTopBar: Bool) -> AnyShape {

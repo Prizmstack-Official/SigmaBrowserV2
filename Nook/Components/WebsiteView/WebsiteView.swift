@@ -175,27 +175,11 @@ struct WebsiteView: View {
     private let dragCoordinateSpace = "splitPreview"
 
     private var cornerRadius: CGFloat {
-        if #available(macOS 26.0, *) {
-            return 8
-        } else {
-            return 8
-        }
+        LexonTheme.controlCornerRadius
     }
     
     private var webViewClipShape: AnyShape {
-        let hasTopBar = nookSettings.topBarAddressView
-        
-        if hasTopBar {
-            return AnyShape(UnevenRoundedRectangle(
-                topLeadingRadius: 0,
-                bottomLeadingRadius: cornerRadius,
-                bottomTrailingRadius: cornerRadius,
-                topTrailingRadius: 0,
-                style: .continuous
-            ))
-        } else {
-            return AnyShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        }
+        AnyShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 
     var body: some View {

@@ -152,7 +152,7 @@ enum LexonTheme {
 
 enum SidebarLayoutMetrics {
     static let shellPadding: CGFloat = 10
-    static let shellSpacing: CGFloat = 12
+    static let shellSpacing: CGFloat = 6
     static let panelInset: CGFloat = 10
     static let railTopInset: CGFloat = 54
 
