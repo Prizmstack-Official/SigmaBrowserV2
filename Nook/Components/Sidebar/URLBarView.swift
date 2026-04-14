@@ -137,7 +137,7 @@ struct URLBarButtonStyle: ButtonStyle {
     @State private var isHovering: Bool = false
     
     private let cornerRadius: CGFloat = 12
-    private let size: CGFloat = 28
+    private let size: CGFloat = TopBarMetrics.controlSize
     
     func makeBody(configuration: Configuration) -> some View {
         ZStack {

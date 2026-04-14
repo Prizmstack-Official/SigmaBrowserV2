@@ -11,7 +11,9 @@ import SwiftUI
 enum TopBarMetrics {
     static let height: CGFloat = LexonTheme.topBarHeight
     static let horizontalPadding: CGFloat = 8
-    static let verticalPadding: CGFloat = 7
+    static let topPadding: CGFloat = 4
+    static let bottomPadding: CGFloat = 8
+    static let controlSize: CGFloat = 28
 }
 
 struct TopBarView: View {
@@ -43,11 +45,13 @@ struct TopBarView: View {
             // Main content
             ZStack {
                 HStack(spacing: 8) {
-                    navigationControls
+                    leadingWindowControls
                         .frame(
                             width: leftChromeWidth,
                             alignment: .leading
                         )
+
+                    backForwardControls
 
                     if hasPiPControl, let tab = currentTab {
                         pipButton(for: tab)
@@ -68,7 +72,8 @@ struct TopBarView: View {
 
             }
             .padding(.horizontal, TopBarMetrics.horizontalPadding)
-            .padding(.vertical, TopBarMetrics.verticalPadding)
+            .padding(.top, TopBarMetrics.topPadding)
+            .padding(.bottom, TopBarMetrics.bottomPadding)
             .frame(maxWidth: .infinity)
             .frame(height: TopBarMetrics.height)
             .background(topBarBackgroundColor)
@@ -157,53 +162,56 @@ struct TopBarView: View {
 
     }
 
-    private var navigationControls: some View {
+    private var leadingWindowControls: some View {
         HStack(spacing: 4) {
             if shouldShowWindowButtonsInTopBar {
                 MacButtonsView()
-                    .frame(width: 76, height: 28, alignment: .leading)
+                    .frame(width: 76, height: TopBarMetrics.controlSize, alignment: .leading)
             }
 
             sidebarToggleButton
+        }
+    }
 
-            Button("Go Back", systemImage: "chevron.backward", action: goBack)
+    private var backForwardControls: some View {
+        HStack(spacing: 4) {
+            if tabWrapper.canGoBack {
+                Button("Go Back", systemImage: "chevron.backward", action: goBack)
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(NavButtonStyle(size: .small))
+                    .foregroundStyle(navButtonColor)
+                    .animation(
+                        shouldAnimateColorChange ? .easeInOut(duration: 0.3) : nil,
+                        value: navButtonColor
+                    )
+                    .contextMenu {
+                        NavigationHistoryContextMenu(
+                            historyType: .back,
+                            windowState: windowState
+                        )
+                    }
+            }
+
+            if tabWrapper.canGoForward {
+                Button(
+                    "Go Forward",
+                    systemImage: "chevron.right",
+                    action: goForward
+                )
                 .labelStyle(.iconOnly)
-                .buttonStyle(NavButtonStyle())
+                .buttonStyle(NavButtonStyle(size: .small))
                 .foregroundStyle(navButtonColor)
                 .animation(
                     shouldAnimateColorChange ? .easeInOut(duration: 0.3) : nil,
                     value: navButtonColor
                 )
-                .disabled(!tabWrapper.canGoBack)
-                .opacity(tabWrapper.canGoBack ? 1.0 : 0.4)
                 .contextMenu {
                     NavigationHistoryContextMenu(
-                        historyType: .back,
+                        historyType: .forward,
                         windowState: windowState
                     )
                 }
-
-            Button(
-                "Go Forward",
-                systemImage: "chevron.right",
-                action: goForward
-            )
-            .labelStyle(.iconOnly)
-            .buttonStyle(NavButtonStyle())
-            .foregroundStyle(navButtonColor)
-            .animation(
-                shouldAnimateColorChange ? .easeInOut(duration: 0.3) : nil,
-                value: navButtonColor
-            )
-            .disabled(!tabWrapper.canGoForward)
-            .opacity(tabWrapper.canGoForward ? 1.0 : 0.4)
-            .contextMenu {
-                NavigationHistoryContextMenu(
-                    historyType: .forward,
-                    windowState: windowState
-                )
             }
-
         }
     }
 
@@ -217,7 +225,7 @@ struct TopBarView: View {
             browserManager.toggleSidebar(for: windowState)
         }
         .labelStyle(.iconOnly)
-        .buttonStyle(NavButtonStyle())
+        .buttonStyle(NavButtonStyle(size: .small))
         .foregroundStyle(navButtonColor)
         .animation(
             shouldAnimateColorChange ? .easeInOut(duration: 0.3) : nil,
@@ -236,7 +244,7 @@ struct TopBarView: View {
             return nil
         }
 
-        return max(windowState.sidebarWidth - 8, 0)
+        return max(windowState.sidebarWidth, 0)
     }
 
     private var isSidebarPresentedBelowHeader: Bool {
@@ -276,7 +284,7 @@ struct TopBarView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .frame(height: TopBarMetrics.controlSize)
         .background(urlBarBackgroundColor)
         .animation(
             shouldAnimateColorChange ? .easeInOut(duration: 0.3) : nil,
@@ -547,7 +555,7 @@ struct BrowserUtilityPanelIcon: View {
         Image(systemName: systemImage)
             .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(navButtonColor)
-            .frame(width: 32, height: 32)
+            .frame(width: TopBarMetrics.controlSize, height: TopBarMetrics.controlSize)
             .background(backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
