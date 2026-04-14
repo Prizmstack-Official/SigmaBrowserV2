@@ -14,12 +14,13 @@ struct SpaceSeparator: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        let hasTabs = !browserManager.tabManager.tabs(
-            in: browserManager.tabManager.currentSpace!
-        ).isEmpty
+        let hasTabs = browserManager.tabManager.currentSpace.map {
+            !browserManager.tabManager.tabs(in: $0).isEmpty
+        } ?? false
+
         HStack(spacing: 0) {
             RoundedRectangle(cornerRadius: 100)
-                .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.15))
+                .fill(isHovering ? LexonTheme.border(for: colorScheme) : Color.clear)
                 .frame(height: 1)
                 .animation(.smooth(duration: 0.1), value: isHovering)
 
@@ -48,10 +49,10 @@ struct SpaceSeparator: View {
     
     var foregroundColor: Color {
         switch isClearHovered {
-            case true:
-                return browserManager.gradientColorManager.isDark ? Color.black.opacity(0.85): Color.white
-            default:
-                return browserManager.gradientColorManager.isDark ? Color.black.opacity(0.3) : Color.white.opacity(0.3)
+        case true:
+            return LexonTheme.primaryText(for: colorScheme)
+        default:
+            return LexonTheme.tertiaryText(for: colorScheme)
         }
     }
 }

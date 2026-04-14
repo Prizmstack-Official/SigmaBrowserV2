@@ -48,7 +48,7 @@ struct SpacesListItem: View {
             }
         } label: {
             spaceIcon
-                .opacity(isActive ? 1.0 : 0.85)
+                .opacity(isActive ? 1.0 : 0.7)
                 .frame(width: buttonSideLength, height: buttonSideLength)
         }
         .labelStyle(.iconOnly)
@@ -84,9 +84,8 @@ struct SpacesListItem: View {
             // Normal mode: show icon or emoji
             if isEmoji(space.icon) {
                 Text(space.icon)
-                    .conditionally(if: !isActive, apply: { view in
-                        view.colorMultiply(.gray).blendMode(.luminosity)
-                    })
+                    .font(.system(size: isActive ? 24 : 22))
+                    .opacity(isActive ? 1.0 : 0.78)
                     .background(EmojiPickerAnchor(manager: emojiManager))
                     .onChange(of: emojiManager.selectedEmoji) { _, newValue in
                         space.icon = newValue
@@ -95,6 +94,7 @@ struct SpacesListItem: View {
 
             } else {
                 Image(systemName: space.icon)
+                    .font(.system(size: isActive ? 18 : 17, weight: isActive ? .semibold : .medium))
                     .foregroundStyle(iconColor)
                     .background(EmojiPickerAnchor(manager: emojiManager))
                     .onChange(of: emojiManager.selectedEmoji) { _, newValue in
@@ -106,9 +106,9 @@ struct SpacesListItem: View {
     }
 
     private var iconColor: Color {
-        browserManager.gradientColorManager.isDark
-            ? AppColors.spaceTabTextDark
-            : AppColors.spaceTabTextLight
+        isActive
+            ? LexonTheme.primaryText(for: colorScheme)
+            : LexonTheme.tertiaryText(for: colorScheme)
     }
 
     // MARK: - Context Menu
@@ -223,28 +223,17 @@ struct SpaceListItemButtonStyle: ButtonStyle {
 //    }
     
     private var cornerRadius: CGFloat {
-        min(LexonTheme.controlCornerRadius, sideLength / 2)
+        min(16, sideLength / 2)
     }
     
     private var borderColor: Color {
-        isActive
-            ? LexonTheme.strongBorder(for: colorScheme)
-            : LexonTheme.border(for: colorScheme)
+        Color.clear
     }
 
     private func backgroundColor(isPressed: Bool) -> Color {
-        if isActive {
-            return configurationFill(pressed: isPressed)
-        }
         guard (isHovering || isPressed) && isEnabled else { return Color.clear }
         return isPressed
             ? LexonTheme.activeFill(for: colorScheme)
-            : LexonTheme.hoverFill(for: colorScheme)
-    }
-
-    private func configurationFill(pressed: Bool) -> Color {
-        pressed
-            ? LexonTheme.selectedFill(for: colorScheme)
-            : LexonTheme.activeFill(for: colorScheme)
+            : LexonTheme.hoverFill(for: colorScheme).opacity(0.75)
     }
 }

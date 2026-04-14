@@ -36,7 +36,7 @@ struct SpaceTab: View {
                 action()
             }
         }) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 if nestingLevel > 0 {
                     Rectangle()
                         .fill(LexonTheme.border(for: colorScheme))
@@ -48,7 +48,7 @@ struct SpaceTab: View {
                     tab.favicon
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 18, height: 18)
+                        .frame(width: 20, height: 20)
                         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                         .opacity(tab.isUnloaded ? 0.5 : 1.0)
                     
@@ -77,7 +77,7 @@ struct SpaceTab: View {
                             Image(systemName: tab.isAudioMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
                                 .contentTransition(.symbolEffect(.replace))
                                 .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(tab.isAudioMuted ? AppColors.textSecondary : textTab)
+                                .foregroundColor(tab.isAudioMuted ? LexonTheme.secondaryText(for: colorScheme) : textTab)
                         }
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -89,8 +89,8 @@ struct SpaceTab: View {
                 
                 if tab.isRenaming {
                     TextField("", text: $tab.editingName)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(tab.isUnloaded ? AppColors.textSecondary : textTab)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(tab.isUnloaded ? LexonTheme.secondaryText(for: colorScheme) : textTab)
                         .textFieldStyle(.plain)
                         .onSubmit {
                             tab.saveRename()
@@ -108,7 +108,7 @@ struct SpaceTab: View {
                         .focused($isTextFieldFocused)
                 } else {
                     Text(tab.name)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 15, weight: isCurrentTab ? .semibold : .medium))
                         .foregroundStyle(textTab)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -160,13 +160,13 @@ struct SpaceTab: View {
                     }
                 }
             }
-            .padding(.horizontal, 10)
-            .frame(height: 36)
+            .padding(.horizontal, 12)
+            .frame(height: 40)
             .frame(minWidth: 0, maxWidth: .infinity)
             .background(
                 backgroundColor
             )
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(PlainButtonStyle())
         .onHover { hovering in
@@ -362,7 +362,7 @@ struct SpaceTab: View {
 
     private var backgroundColor: Color {
         if isCurrentTab {
-            return colorScheme == .dark ? AppColors.spaceTabActiveLight : AppColors.spaceTabActiveDark
+            return activeSpaceColor.opacity(colorScheme == .dark ? 0.78 : 0.18)
         } else if isHovering {
             return LexonTheme.hoverFill(for: colorScheme)
         } else {
@@ -370,9 +370,26 @@ struct SpaceTab: View {
         }
     }
     private var textTab: Color {
-        return isCurrentTab
+        isCurrentTab
             ? LexonTheme.primaryText(for: colorScheme)
             : LexonTheme.secondaryText(for: colorScheme)
+    }
+
+    private var activeSpaceColor: Color {
+        if let currentSpace = windowState.currentSpace, currentSpace.id == tab.spaceId {
+            return Color(nsColor: currentSpace.color)
+        }
+
+        if windowState.isIncognito,
+           let space = windowState.ephemeralSpaces.first(where: { $0.id == tab.spaceId }) {
+            return Color(nsColor: space.color)
+        }
+
+        if let space = browserManager.tabManager.spaces.first(where: { $0.id == tab.spaceId }) {
+            return Color(nsColor: space.color)
+        }
+
+        return LexonTheme.activeFill(for: colorScheme)
     }
 
 }

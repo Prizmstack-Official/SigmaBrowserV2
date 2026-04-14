@@ -3010,38 +3010,15 @@ extension Tab: WKScriptMessageHandler {
         }
     }
 
-    private func isLikelyOAuthOrExternalWindow(url: URL, windowFeatures: WKWindowFeatures) -> Bool {
-        if OAuthDetector.isLikelyOAuthPopupURL(url) { return true }
-
-        // If the popup has explicit dimensions it's almost certainly a modal sign-in window
-        if let width = windowFeatures.width, let height = windowFeatures.height,
-            width.doubleValue > 0 && height.doubleValue > 0
-        {
-            return true
-        }
-
-        return false
+    private func isLikelyAuthPopup(url: URL) -> Bool {
+        OAuthDetector.isLikelyOAuthPopupURL(url)
     }
 
     // MARK: - Peek Detection
 
-    private func shouldRedirectToPeek(url: URL) -> Bool {
-        // Always redirect to Peek if Option key is down (for any URL)
-        if isOptionKeyDown {
-            return true
-        }
-
-        // Check if this is an external domain URL
-        guard let currentHost = self.url.host,
-            let newHost = url.host
-        else { return false }
-
-        // If hosts are different, it's an external URL
-        if currentHost != newHost {
-            return true
-        }
-
-        return false
+    private func shouldRedirectPopupToPeek() -> Bool {
+        // Keep Option-click as an explicit "open in Peek" override for popups.
+        isOptionKeyDown
     }
 
 }
@@ -3055,33 +3032,28 @@ extension Tab: WKUIDelegate {
         windowFeatures: WKWindowFeatures
     ) -> WKWebView? {
         guard let bm = browserManager else { return nil }
+        let requestedURL = navigationAction.request.url
 
-        // OAuth and signin flows should open in a miniwindow for better UX
-        // The miniwindow handles OAuth completion detection and notifies the parent tab
-        // Skip this for extension-originated navigations — extensions manage their own auth flows
         let sourceScheme = navigationAction.sourceFrame.request.url?.scheme?.lowercased() ?? ""
         let isFromExtension = sourceScheme == "webkit-extension" || sourceScheme == "safari-web-extension"
-        if !isFromExtension,
-            let url = navigationAction.request.url,
-            isLikelyOAuthOrExternalWindow(url: url, windowFeatures: windowFeatures)
-        {
+        let isAuthPopup =
+            !isFromExtension &&
+            requestedURL.map { isLikelyAuthPopup(url: $0) } == true
+
+        // OAuth and sign-in flows should stay in a disposable miniwindow.
+        if isAuthPopup, let url = requestedURL {
             print("🔐 [Tab] OAuth/signin popup detected, opening in miniwindow: \(url.absoluteString)")
-            
-            // Auto-allow the OAuth provider domain for tracking protection
+
             if let providerHost = url.host?.lowercased() {
                 bm.oauthAllowDomain(providerHost)
             }
-            
-            // Store reference to parent tab for completion callback
+
             let parentTabId = self.id
-            
-            // Open OAuth flow in miniwindow
             bm.externalMiniWindowManager.present(url: url) { [weak bm] success, finalURL in
                 print("🔐 [Tab] Miniwindow OAuth flow completed: success=\(success), url=\(finalURL?.absoluteString ?? "nil")")
-                
+
                 guard let bm = bm else { return }
-                
-                // Find the parent tab and reload it
+
                 if let parentTab = bm.tabManager.allTabs().first(where: { $0.id == parentTabId }) {
                     DispatchQueue.main.async {
                         if success {
@@ -3092,15 +3064,14 @@ extension Tab: WKUIDelegate {
                     }
                 }
             }
-            
-            return nil  // Don't create a WebView, miniwindow handles it
+
+            return nil
         }
 
-        // For regular popups, check if this should be redirected to Peek
-        // Skip Peek for extension-originated navigations
+        // For regular popups, only use Peek when the user explicitly requests it.
         if !isFromExtension,
-            let url = navigationAction.request.url,
-            shouldRedirectToPeek(url: url)
+            let url = requestedURL,
+            shouldRedirectPopupToPeek()
         {
 
             // Trigger Peek after returning control to WebKit to avoid runloop-mode issues

@@ -49,10 +49,10 @@ struct AppColors {
 }
 
 enum LexonTheme {
-    static let sidebarRailWidth: CGFloat = 48
-    static let sidebarRailItemSize: CGFloat = 34
+    static let sidebarRailWidth: CGFloat = 60
+    static let sidebarRailItemSize: CGFloat = 40
     static let outerCornerRadius: CGFloat = 26
-    static let panelCornerRadius: CGFloat = 20
+    static let panelCornerRadius: CGFloat = 18
     static let pillCornerRadius: CGFloat = 14
     static let controlCornerRadius: CGFloat = 12
     static let topBarHeight: CGFloat = 44
@@ -72,8 +72,8 @@ enum LexonTheme {
 
     static func sidebarShell(for colorScheme: ColorScheme) -> Color {
         colorScheme == .dark
-            ? Color(hex: "14161A").opacity(0.84)
-            : Color(hex: "FBF9F5").opacity(0.88)
+            ? Color(hex: "1B1C20").opacity(0.96)
+            : Color(hex: "FBF9F5").opacity(0.92)
     }
 
     static func railFill(for colorScheme: ColorScheme) -> Color {
@@ -151,9 +151,10 @@ enum LexonTheme {
 }
 
 enum SidebarLayoutMetrics {
-    static let shellPadding: CGFloat = 8
-    static let shellSpacing: CGFloat = 0
-    static let panelInset: CGFloat = 8
+    static let shellPadding: CGFloat = 10
+    static let shellSpacing: CGFloat = 12
+    static let panelInset: CGFloat = 10
+    static let railTopInset: CGFloat = 54
 
     static func contentWidth(for sidebarWidth: CGFloat) -> CGFloat {
         let availableWidth = sidebarWidth

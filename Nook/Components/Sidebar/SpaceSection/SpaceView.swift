@@ -37,6 +37,7 @@ struct SpaceView: View {
     @EnvironmentObject var browserManager: BrowserManager
     @Environment(BrowserWindowState.self) private var windowState
     @Environment(CommandPalette.self) private var commandPalette
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var gradientColorManager: GradientColorManager
     @ObservedObject private var dragSession = NookDragSessionManager.shared
     @State private var canScrollUp: Bool = false
@@ -57,6 +58,7 @@ struct SpaceView: View {
     @State private var refreshTrigger: UUID = UUID()
     @State private var folderChangeCount: Int = 0
     @State private var isHovered: Bool = false
+    @State private var isNewTabHovered: Bool = false
 
     let onActivateTab: (Tab) -> Void
     let onCloseTab: (Tab) -> Void
@@ -147,7 +149,7 @@ struct SpaceView: View {
 
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 10) {
             // Wrap SpaceTitle in a spacePinned drop zone so tabs can be dropped
             // onto the title to pin them (especially when pinned section is empty)
             NookDropZoneHostView(
@@ -163,7 +165,7 @@ struct SpaceView: View {
 
             mainContentContainer
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 6)
         .frame(minWidth: 0, maxWidth: outerWidth, alignment: .leading)
         .contentShape(Rectangle())
         .coordinateSpace(name: "SpaceViewCoordinateSpace")
@@ -448,14 +450,28 @@ struct SpaceView: View {
         Button {
             commandPalette.open()
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 Image(systemName: "plus")
-                Text("New Tab")
+                    .font(.system(size: 15, weight: .semibold))
+                Text("New Page")
+                    .font(.system(size: 16, weight: .medium))
                 Spacer()
             }
+            .foregroundStyle(LexonTheme.secondaryText(for: colorScheme))
+            .padding(.horizontal, 12)
+            .frame(height: 42)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(isNewTabHovered ? LexonTheme.hoverFill(for: colorScheme) : Color.clear)
+            )
         }
-        .buttonStyle(RectNavButtonStyle())
-        .padding(.top, 8)
+        .buttonStyle(.plain)
+        .padding(.top, 6)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.12)) {
+                isNewTabHovered = hovering
+            }
+        }
     }
 
     private var newTabButtonSectionWithClear: some View {

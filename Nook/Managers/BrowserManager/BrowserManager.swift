@@ -1864,9 +1864,19 @@ class BrowserManager: ObservableObject {
         }
     }
 
-    /// Presents an external URL in a mini window popup (for URL events)
+    /// Opens an external URL in the current tab stack for URL events.
     func presentExternalURL(_ url: URL) {
-        externalMiniWindowManager.present(url: url)
+        if let targetWindow = windowRegistry?.activeWindow ?? windowRegistry?.allWindows.first {
+            createNewTab(in: targetWindow, url: url.absoluteString)
+            return
+        }
+
+        let newTab = tabManager.createNewTab(
+            url: url.absoluteString,
+            in: tabManager.currentSpace,
+            parentTab: tabManager.currentTab
+        )
+        tabManager.setActiveTab(newTab)
     }
 
     // MARK: - Window State Management

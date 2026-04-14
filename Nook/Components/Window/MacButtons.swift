@@ -68,10 +68,14 @@ class MacButtonsViewModel {
     }
 
     func getButtonColor(buttonType: ButtonType, isDark: Bool) -> (Color, Color) {
-        if buttonState != .idle {
+        if buttonState == .idle {
             return (macFillColor(buttonType: buttonType), macStrokeColor(buttonType: buttonType))
         }
-        return (isDark ? AppColors.pinnedTabHoverLight : AppColors.pinnedTabHoverDark, Color.clear)
+
+        return (
+            macFillColor(buttonType: buttonType).opacity(isDark ? 0.92 : 0.88),
+            macStrokeColor(buttonType: buttonType)
+        )
     }
 
     func macFillColor(buttonType: ButtonType) -> Color {

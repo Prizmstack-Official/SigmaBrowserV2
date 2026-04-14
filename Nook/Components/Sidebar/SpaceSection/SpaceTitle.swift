@@ -5,7 +5,7 @@ struct SpaceTitle: View {
     @Environment(\.colorScheme) var colorScheme
 
     let space: Space
-    var iconSize: CGFloat = 12
+    var iconSize: CGFloat = 20
 
     @State private var isHovering: Bool = false
     @State private var isRenaming: Bool = false
@@ -19,56 +19,10 @@ struct SpaceTitle: View {
     @StateObject private var emojiManager = EmojiPickerManager()
 
     var body: some View {
-        HStack(spacing: 6) {
-            // Show emoji or SF Symbol icon
-            ZStack {
-                // Hidden TextField for capturing emoji selection
-                TextField("", text: $selectedEmoji)
-                    .frame(width: 0, height: 0)
-                    .opacity(0)
-                    .focused($emojiFieldFocused)
-                    .onChange(of: selectedEmoji) { _, newValue in
-                        if !newValue.isEmpty {
-                            // Safely unwrap the last character
-                            guard let lastChar = newValue.last else { return }
-                            space.icon = String(lastChar)
-                            browserManager.tabManager.persistSnapshot()
-                            selectedEmoji = ""
-                        }
-                    }
-
-                if isEmoji(space.icon) {
-                    Text(space.icon)
-                        .font(.system(size: iconSize))
-                        .background(EmojiPickerAnchor(manager: emojiManager))
-                        .onTapGesture(count: 2) {
-                            emojiManager.toggle()
-                        }
-                        .onChange(of: emojiManager.selectedEmoji) { _, newValue in
-                            print(newValue)
-                            space.icon = newValue
-                            browserManager.tabManager.persistSnapshot()
-                         }
-                } else {
-                    Image(systemName: space.icon)
-                        .font(.system(size: iconSize))
-                        .background(EmojiPickerAnchor(manager: emojiManager))
-                        .onTapGesture(count: 2) {
-                            emojiManager.toggle()
-                        }
-                        .onChange(of: emojiManager.selectedEmoji) { _, newValue in
-                            print(newValue)
-                            space.icon = newValue
-                            browserManager.tabManager.persistSnapshot()
-                         }
-                }
-
-            }
-
-
+        HStack(spacing: 10) {
             if isRenaming {
                 TextField("", text: $draftName)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(textColor)
                     .textFieldStyle(PlainTextFieldStyle())
                     .autocorrectionDisabled()
@@ -88,19 +42,19 @@ struct SpaceTitle: View {
             } else {
                 HStack(spacing: 6) {
                     Text(space.name)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(textColor)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .onTapGesture(count: 2) {
                             startRenaming()
                         }
+
+                    titleAccessory
                 }
             }
 
             Spacer()
-            
-
 
             Menu {
                 SpaceContextMenu(
@@ -137,7 +91,8 @@ struct SpaceTitle: View {
             }
             .menuStyle(.button)
             .buttonStyle(NavButtonStyle(size: .small))
-            .opacity(isHovering ? 1.0 : 0.0)
+            .foregroundStyle(LexonTheme.tertiaryText(for: colorScheme))
+            .opacity(isHovering ? 0.9 : 0.0)
 
         }
         // Match tabs' internal left/right padding so text aligns
@@ -152,13 +107,14 @@ struct SpaceTitle: View {
             }
             dragSession.pendingDrop = nil
         }
-        .padding(.leading, 10)
-        .padding(.trailing, 5)
-        .padding(.vertical, 5)
+        .padding(.leading, 2)
+        .padding(.trailing, 2)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
         .frame(maxWidth: .infinity)
         .background(hoverColor)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .contentShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .contentShape(RoundedRectangle(cornerRadius: 14))
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.1)) {
                 isHovering = hovering
@@ -210,14 +166,49 @@ struct SpaceTitle: View {
     }
 
     private var hoverColor: Color {
-        if isHovering || isDropHovering {
-            return LexonTheme.hoverFill(for: colorScheme)
-        } else {
-            return .clear
-        }
+        isDropHovering ? LexonTheme.hoverFill(for: colorScheme) : .clear
     }
     private var textColor: Color {
-        LexonTheme.secondaryText(for: colorScheme)
+        LexonTheme.primaryText(for: colorScheme)
+    }
+
+    @ViewBuilder
+    private var titleAccessory: some View {
+        ZStack {
+            // Hidden field still allows emoji replacement without changing the visible title layout.
+            TextField("", text: $selectedEmoji)
+                .frame(width: 0, height: 0)
+                .opacity(0)
+                .focused($emojiFieldFocused)
+                .onChange(of: selectedEmoji) { _, newValue in
+                    if !newValue.isEmpty {
+                        guard let lastChar = newValue.last else { return }
+                        space.icon = String(lastChar)
+                        browserManager.tabManager.persistSnapshot()
+                        selectedEmoji = ""
+                    }
+                }
+
+            Group {
+                if isEmoji(space.icon) {
+                    Text(space.icon)
+                        .font(.system(size: iconSize))
+                } else {
+                    Image(systemName: space.icon)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(LexonTheme.secondaryText(for: colorScheme))
+                }
+            }
+            .background(EmojiPickerAnchor(manager: emojiManager))
+            .onTapGesture(count: 2) {
+                emojiManager.toggle()
+            }
+            .onChange(of: emojiManager.selectedEmoji) { _, newValue in
+                guard !newValue.isEmpty else { return }
+                space.icon = newValue
+                browserManager.tabManager.persistSnapshot()
+            }
+        }
     }
 
     private var canDeleteSpace: Bool {

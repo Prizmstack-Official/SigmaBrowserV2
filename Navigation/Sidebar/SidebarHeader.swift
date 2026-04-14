@@ -37,7 +37,7 @@ struct SidebarHeader: View {
             .environmentObject(browserManager)
             .environment(windowState)
             .environment(commandPalette)
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 4)
     }
 
     private var navigationButtons: some View {
@@ -60,20 +60,21 @@ struct SidebarWindowControlsView: View {
     @Environment(BrowserWindowState.self) private var windowState
     @Environment(CommandPalette.self) private var commandPalette
     @Environment(\.nookSettings) var nookSettings
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             if nookSettings.sidebarPosition == .left {
                 MacButtonsView()
-                    .frame(width: 70)
+                    .frame(width: 76)
             }
 
             Button("Toggle Sidebar", systemImage: nookSettings.sidebarPosition == .left ? "sidebar.left" : "sidebar.right") {
                 browserManager.toggleSidebar(for: windowState)
             }
             .labelStyle(.iconOnly)
-            .buttonStyle(NavButtonStyle())
-            .foregroundStyle(Color.primary)
+            .buttonStyle(NavButtonStyle(size: .small))
+            .foregroundStyle(LexonTheme.secondaryText(for: colorScheme))
 
             SidebarWorkspaceActionButtons(showSidebarToggle: false)
                 .environmentObject(browserManager)
@@ -84,7 +85,7 @@ struct SidebarWindowControlsView: View {
 
             if nookSettings.sidebarPosition == .right {
                 MacButtonsView()
-                    .frame(width: 70)
+                    .frame(width: 76)
             }
         }
         .frame(height: 28)
@@ -96,6 +97,7 @@ struct SidebarWorkspaceActionButtons: View {
     @Environment(BrowserWindowState.self) private var windowState
     @Environment(CommandPalette.self) private var commandPalette
     @Environment(\.nookSettings) private var nookSettings
+    @Environment(\.colorScheme) private var colorScheme
 
     var showSidebarToggle: Bool = true
 
@@ -106,24 +108,24 @@ struct SidebarWorkspaceActionButtons: View {
                     browserManager.toggleSidebar(for: windowState)
                 }
                 .labelStyle(.iconOnly)
-                .buttonStyle(NavButtonStyle())
-                .foregroundStyle(Color.primary)
+                .buttonStyle(NavButtonStyle(size: .small))
+                .foregroundStyle(LexonTheme.secondaryText(for: colorScheme))
             }
 
             Button("Clean Up Workspace", systemImage: "sparkles") {
                 presentCleanupDialog()
             }
             .labelStyle(.iconOnly)
-            .buttonStyle(NavButtonStyle())
-            .foregroundStyle(Color.primary)
+            .buttonStyle(NavButtonStyle(size: .small))
+            .foregroundStyle(LexonTheme.secondaryText(for: colorScheme))
             .disabled(currentSpace == nil || cleanupCandidateCount == 0)
 
             Button("Open Search", systemImage: "magnifyingglass") {
                 commandPalette.open()
             }
             .labelStyle(.iconOnly)
-            .buttonStyle(NavButtonStyle())
-            .foregroundStyle(Color.primary)
+            .buttonStyle(NavButtonStyle(size: .small))
+            .foregroundStyle(LexonTheme.secondaryText(for: colorScheme))
         }
     }
 

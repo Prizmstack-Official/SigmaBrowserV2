@@ -47,7 +47,7 @@ struct SpacesSideBarView: View {
         let essentialsCount = effectiveProfileId.map { browserManager.tabManager.essentialTabs(for: $0).count } ?? 0
         let shouldAnimate = (windowRegistry.activeWindow?.id == windowState.id) && !browserManager.isTransitioningProfile
 
-        return HStack(spacing: 0) {
+        return HStack(spacing: SidebarLayoutMetrics.shellSpacing) {
             if nookSettings.sidebarPosition == .left {
                 sidebarRail
                 sidebarContentPanel(effectiveProfileId: effectiveProfileId)
@@ -63,10 +63,10 @@ struct SpacesSideBarView: View {
         )
         .overlay {
             RoundedRectangle(cornerRadius: LexonTheme.panelCornerRadius, style: .continuous)
-                .stroke(LexonTheme.border(for: colorScheme), lineWidth: 1)
+                .stroke(LexonTheme.border(for: colorScheme), lineWidth: 0.75)
         }
         .clipShape(RoundedRectangle(cornerRadius: LexonTheme.panelCornerRadius, style: .continuous))
-        .shadow(color: LexonTheme.shadow(for: colorScheme), radius: 22, x: 0, y: 10)
+        .shadow(color: LexonTheme.shadow(for: colorScheme), radius: 16, x: 0, y: 8)
         .padding(SidebarLayoutMetrics.shellPadding)
         .background(
             GeometryReader { geo in
@@ -86,7 +86,7 @@ struct SpacesSideBarView: View {
     }
 
     private func sidebarContentPanel(effectiveProfileId: UUID?) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 14) {
             SidebarHeader(isSidebarHovered: isSidebarHovered)
                 .environmentObject(browserManager)
                 .environment(windowState)
@@ -153,7 +153,8 @@ struct SpacesSideBarView: View {
                 .foregroundStyle(LexonTheme.secondaryText(for: colorScheme))
             }
         }
-        .padding(.vertical, 10)
+        .padding(.top, SidebarLayoutMetrics.railTopInset)
+        .padding(.bottom, 10)
         .frame(width: LexonTheme.sidebarRailWidth)
         .frame(maxHeight: .infinity)
     }
