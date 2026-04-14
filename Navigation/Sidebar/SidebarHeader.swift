@@ -15,11 +15,14 @@ struct SidebarHeader: View {
     @Environment(\.nookSettings) var nookSettings
     let isSidebarHovered: Bool
     var showMacButtons: Bool = true
+    var showWindowControls: Bool = true
     @State private var sidebarWidth: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 8) {
-            windowControls
+            if showWindowControls {
+                windowControls
+            }
 
             if !nookSettings.topBarAddressView {
                 navigationButtons

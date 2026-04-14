@@ -39,7 +39,10 @@ struct SidebarHoverOverlayView: View {
                     }
 
                 if hoverManager.isOverlayVisible {
-                    SpacesSideBarView()
+                    SpacesSideBarView(
+                        showSidebarWindowControls: false,
+                        showRailWindowControls: false
+                    )
                         .frame(width: windowState.sidebarWidth)
                         .environmentObject(browserManager)
                         .environment(windowState)

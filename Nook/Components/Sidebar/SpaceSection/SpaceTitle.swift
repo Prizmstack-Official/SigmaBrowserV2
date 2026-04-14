@@ -5,7 +5,7 @@ struct SpaceTitle: View {
     @Environment(\.colorScheme) var colorScheme
 
     let space: Space
-    var iconSize: CGFloat = 16
+    var iconSize: CGFloat = 14
 
     @State private var isHovering: Bool = false
     @State private var isRenaming: Bool = false
@@ -24,7 +24,7 @@ struct SpaceTitle: View {
 
             if isRenaming {
                 TextField("", text: $draftName)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(textColor)
                     .textFieldStyle(PlainTextFieldStyle())
                     .autocorrectionDisabled()
@@ -43,7 +43,7 @@ struct SpaceTitle: View {
                     }
             } else {
                 Text(space.name)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(textColor)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -193,7 +193,7 @@ struct SpaceTitle: View {
                         .font(.system(size: iconSize))
                 } else {
                     Image(systemName: space.icon)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(LexonTheme.secondaryText(for: colorScheme))
                 }
             }

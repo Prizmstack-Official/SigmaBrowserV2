@@ -25,6 +25,8 @@ struct SpacesSideBarView: View {
 
     // Hover states
     @State private var isSidebarHovered: Bool = false
+    var showSidebarWindowControls: Bool = true
+    var showRailWindowControls: Bool = true
 
     var body: some View {
         mainSidebarContent
@@ -87,7 +89,11 @@ struct SpacesSideBarView: View {
 
     private func sidebarContentPanel(effectiveProfileId: UUID?) -> some View {
         VStack(spacing: 14) {
-            SidebarHeader(isSidebarHovered: isSidebarHovered, showMacButtons: false)
+            SidebarHeader(
+                isSidebarHovered: isSidebarHovered,
+                showMacButtons: false,
+                showWindowControls: showSidebarWindowControls
+            )
                 .environmentObject(browserManager)
                 .environment(windowState)
 
@@ -163,7 +169,7 @@ struct SpacesSideBarView: View {
 
     @ViewBuilder
     private var railWindowControls: some View {
-        if nookSettings.sidebarPosition == .left {
+        if showRailWindowControls && nookSettings.sidebarPosition == .left {
             MacButtonsView()
                 .frame(width: LexonTheme.sidebarRailWidth, height: 28, alignment: .leading)
         } else {

@@ -154,6 +154,11 @@ struct TopBarView: View {
 
     private var navigationControls: some View {
         HStack(spacing: 4) {
+            if shouldShowWindowButtonsInTopBar {
+                MacButtonsView()
+                    .frame(width: 76, height: 28, alignment: .leading)
+            }
+
             sidebarToggleButton
 
             Button("Go Back", systemImage: "chevron.backward", action: goBack)
@@ -213,6 +218,10 @@ struct TopBarView: View {
             shouldAnimateColorChange ? .easeInOut(duration: 0.3) : nil,
             value: navButtonColor
         )
+    }
+
+    private var shouldShowWindowButtonsInTopBar: Bool {
+        !windowState.isSidebarVisible && nookSettings.sidebarPosition == .left
     }
 
     private var urlBar: some View {

@@ -452,9 +452,9 @@ struct SpaceView: View {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "plus")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                 Text("New Page")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                 Spacer()
             }
             .foregroundStyle(LexonTheme.tertiaryText(for: colorScheme))
