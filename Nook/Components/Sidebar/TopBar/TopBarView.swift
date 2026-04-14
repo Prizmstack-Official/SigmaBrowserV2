@@ -154,6 +154,8 @@ struct TopBarView: View {
 
     private var navigationControls: some View {
         HStack(spacing: 4) {
+            sidebarToggleButton
+
             Button("Go Back", systemImage: "chevron.backward", action: goBack)
                 .labelStyle(.iconOnly)
                 .buttonStyle(NavButtonStyle())
@@ -193,6 +195,24 @@ struct TopBarView: View {
             }
 
         }
+    }
+
+    private var sidebarToggleButton: some View {
+        let sidebarOnLeft = nookSettings.sidebarPosition == .left
+
+        return Button(
+            "Toggle Sidebar",
+            systemImage: sidebarOnLeft ? "sidebar.left" : "sidebar.right"
+        ) {
+            browserManager.toggleSidebar(for: windowState)
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(NavButtonStyle())
+        .foregroundStyle(navButtonColor)
+        .animation(
+            shouldAnimateColorChange ? .easeInOut(duration: 0.3) : nil,
+            value: navButtonColor
+        )
     }
 
     private var urlBar: some View {

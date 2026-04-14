@@ -12,13 +12,15 @@ struct SpacesList: View {
     @EnvironmentObject var browserManager: BrowserManager
     @Environment(BrowserWindowState.self) private var windowState
     let axis: Axis
+    let itemSideLength: CGFloat
     @State private var availableWidth: CGFloat = 0
     @State private var hoveredSpaceId: UUID?
     @State private var showPreview: Bool = false
     @State private var isHoveringList: Bool = false
 
-    init(axis: Axis = .horizontal) {
+    init(axis: Axis = .horizontal, itemSideLength: CGFloat = 40) {
         self.axis = axis
+        self.itemSideLength = itemSideLength
     }
 
     private var layoutMode: SpacesListLayoutMode {
@@ -40,8 +42,9 @@ struct SpacesList: View {
 
     var body: some View {
         let isVertical = axis == .vertical
+        let overlayAlignment: Alignment = isVertical ? .top : .center
         let stackLayout = isVertical
-            ? AnyLayout(VStackLayout(alignment: .center, spacing: 8))
+            ? AnyLayout(VStackLayout(alignment: .center, spacing: 10))
             : AnyLayout(HStackLayout(alignment: .center, spacing: 0))
 
         Color.clear
@@ -50,7 +53,7 @@ struct SpacesList: View {
             } action: { newWidth in
                 availableWidth = newWidth
             }
-            .overlay {
+            .overlay(alignment: overlayAlignment) {
                 stackLayout {
                     ForEach(Array(visibleSpaces.enumerated()), id: \.element.id) { index, space in
                         SpacesListItem(
@@ -58,6 +61,7 @@ struct SpacesList: View {
                             isActive: windowState.currentSpaceId == space.id,
                             compact: !isVertical && layoutMode == .compact,
                             isFaded: false,
+                            buttonSideLength: itemSideLength,
                             onHoverChange: { isHovering in
                                 guard !isVertical else { return }
                                 if isHovering {
@@ -92,6 +96,7 @@ struct SpacesList: View {
                         }
                     }
                 }
+                .padding(.vertical, isVertical ? 2 : 0)
                 .onHover { hovering in
                     isHoveringList = hovering
                     if !hovering {

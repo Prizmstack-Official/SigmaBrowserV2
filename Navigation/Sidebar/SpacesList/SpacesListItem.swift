@@ -17,6 +17,7 @@ struct SpacesListItem: View {
     let isActive: Bool
     let compact: Bool
     let isFaded: Bool
+    let buttonSideLength: CGFloat
     let onHoverChange: ((Bool) -> Void)?
 
     @State private var isHovering: Bool = false
@@ -29,12 +30,14 @@ struct SpacesListItem: View {
         isActive: Bool,
         compact: Bool,
         isFaded: Bool,
+        buttonSideLength: CGFloat = 40,
         onHoverChange: ((Bool) -> Void)? = nil
     ) {
         self.space = space
         self.isActive = isActive
         self.compact = compact
         self.isFaded = isFaded
+        self.buttonSideLength = buttonSideLength
         self.onHoverChange = onHoverChange
     }
 
@@ -46,10 +49,15 @@ struct SpacesListItem: View {
         } label: {
             spaceIcon
                 .opacity(isActive ? 1.0 : 0.85)
-                .frame(width: 40, height: 40)
+                .frame(width: buttonSideLength, height: buttonSideLength)
         }
         .labelStyle(.iconOnly)
-        .buttonStyle(SpaceListItemButtonStyle(isActive: isActive))
+        .buttonStyle(
+            SpaceListItemButtonStyle(
+                isActive: isActive,
+                sideLength: buttonSideLength
+            )
+        )
         .layoutPriority(2)
         .foregroundStyle(LexonTheme.primaryText(for: colorScheme))
         .layoutPriority(isActive ? 1 : 0)
@@ -175,9 +183,9 @@ struct SpacesListItem: View {
 struct SpaceListItemButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.isEnabled) var isEnabled
-    @Environment(\.controlSize) var controlSize
     @State private var isHovering: Bool = false
     let isActive: Bool
+    let sideLength: CGFloat
     
     func makeBody(configuration: Configuration) -> some View {
         ZStack {
@@ -191,8 +199,7 @@ struct SpaceListItemButtonStyle: ButtonStyle {
             configuration.label
                 .foregroundStyle(.primary)
         }
-        .frame(height: size)
-        .frame(maxWidth: size)
+        .frame(width: sideLength, height: sideLength)
         .opacity(isEnabled ? 1.0 : 0.3)
         
         .contentTransition(.symbolEffect(.replace.upUp.byLayer, options: .nonRepeating))
@@ -202,18 +209,6 @@ struct SpaceListItemButtonStyle: ButtonStyle {
         .onHover { hovering in
             isHovering = hovering
         }
-    }
-    
-    private var size: CGFloat {
-        let controlDimension: CGFloat = switch controlSize {
-        case .mini: 24
-        case .small: 28
-        case .regular: 32
-        case .large: 40
-        case .extraLarge: 48
-        @unknown default: 32
-        }
-        return max(controlDimension, 40)
     }
     
 //    private var iconSize: CGFloat {
@@ -228,7 +223,7 @@ struct SpaceListItemButtonStyle: ButtonStyle {
 //    }
     
     private var cornerRadius: CGFloat {
-        LexonTheme.controlCornerRadius
+        min(LexonTheme.controlCornerRadius, sideLength / 2)
     }
     
     private var borderColor: Color {

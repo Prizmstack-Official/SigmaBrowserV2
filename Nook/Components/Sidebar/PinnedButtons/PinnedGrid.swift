@@ -36,58 +36,16 @@ struct PinnedGrid: View {
 
         let shouldAnimate = (windowRegistry.activeWindow?.id == windowState.id) && !browserManager.isTransitioningProfile
 
-        // For embedded use, return proper sized container even when empty to support transitions
+        // Hide the essentials area entirely when nothing is pinned.
         if items.isEmpty {
-            let isDragging = dragSession.isDragging
-
             return AnyView(
-                NookDropZoneHostView(
-                    zoneID: .essentials,
-                    isVertical: false,
-                    manager: dragSession
-                ) {
-                    VStack(spacing: 8) {
-                        Image(systemName: "star.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.secondary)
-
-                        VStack(spacing: 2) {
-                            Text("Drag to add Favorites")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.secondary)
-
-                            Text("Favorites keep your most\nused sites and apps close")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(.tertiary)
-                                .multilineTextAlignment(.center)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .padding(.horizontal, 12)
-                    .background {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
-                            .foregroundStyle(isDragging ? LexonTheme.strongBorder(for: colorScheme) : LexonTheme.border(for: colorScheme))
-                    }
-                    .background {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(isDragging
-                                ? LexonTheme.hoverFill(for: colorScheme)
-                                : Color.clear
-                            )
-                    }
-                    .animation(.easeInOut(duration: 0.15), value: isDragging)
-                }
+                EmptyView()
                 .onAppear {
                     dragSession.pinnedTabsConfig = pinnedTabsConfiguration
                     dragSession.itemCellSize[.essentials] = pinnedTabsConfiguration.minWidth
                     dragSession.itemCellSpacing[.essentials] = pinnedTabsConfiguration.gridSpacing
                     dragSession.itemCounts[.essentials] = 0
                     dragSession.gridColumnCount[.essentials] = colsCount
-                }
-                .onChange(of: dragSession.pendingDrop) { _, drop in
-                    handleEssentialsDrop(drop, items: [])
                 }
             )
         }

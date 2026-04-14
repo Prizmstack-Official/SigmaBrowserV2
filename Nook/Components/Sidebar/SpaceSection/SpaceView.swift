@@ -249,10 +249,7 @@ struct SpaceView: View {
                                 isVertical: true,
                                 manager: dragSession
                             ) {
-                                VStack(spacing: 8) {
-                                    newTabButtonSectionWithClear
-                                    regularTabsListInner
-                                }
+                                regularTabsSection
                             }
                             .onAppear {
                                 updateRegularTabsCaches()
@@ -484,6 +481,20 @@ struct SpaceView: View {
         .animation(.easeInOut(duration: 0.15), value: tabs.count)
     }
 
+    private var regularTabsSection: some View {
+        VStack(spacing: 8) {
+            if tabs.isEmpty {
+                newTabButtonSectionWithClear
+                regularTabsListInner
+            } else {
+                regularTabsListInner
+                newTabButtonSectionWithClear
+            }
+
+            regularTabsBottomSpacer
+        }
+    }
+
     private var regularTabsContent: some View {
         VStack(spacing: 2) {
             let currentTabs = tabs
@@ -502,15 +513,17 @@ struct SpaceView: View {
             } else {
                 regularTabsView(currentTabs: currentTabs)
             }
-
-            Color.clear
-                .contentShape(Rectangle())
-                .conditionalWindowDrag()
-                .frame(height: 100)
         }
         .frame(minWidth: 0, maxWidth: innerWidth, alignment: .leading)
         .contentShape(Rectangle())
         .padding(.top, 2)
+    }
+
+    private var regularTabsBottomSpacer: some View {
+        Color.clear
+            .contentShape(Rectangle())
+            .conditionalWindowDrag()
+            .frame(height: 100)
     }
 
     private func splitTabsView(currentTabs: [Tab], leftIdx: Int, rightIdx: Int) -> some View {
