@@ -165,7 +165,6 @@ struct WindowView: View {
         if nookSettings.topBarAddressView {
             WebContent()
                 .padding(.horizontal, 8)
-                .padding(.top, 8)
         } else {
             let sidebarVisible = windowState.isSidebarVisible
             let sidebarOnRight = nookSettings.sidebarPosition == .right
@@ -276,6 +275,7 @@ struct WindowView: View {
                 inlineSidebar
             }
         }
+        .padding(.horizontal, TopBarMetrics.horizontalPadding)
     }
 
     @ViewBuilder

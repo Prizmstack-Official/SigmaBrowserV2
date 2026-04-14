@@ -89,7 +89,19 @@ struct SpaceView: View {
     }
 
     private var rootTabs: [Tab] {
-        tabs.filter { $0.parentTabId == nil }
+        tabs.filter { $0.parentTabId == nil }.sorted { $0.index < $1.index }
+    }
+
+    private var clearableTabs: [Tab] {
+        tabs.filter { !isProtectedFromClear($0) }
+    }
+
+    private var protectedTabs: [Tab] {
+        tabs.filter(isProtectedFromClear)
+    }
+
+    private var hasClearableTabs: Bool {
+        !clearableTabs.isEmpty
     }
 
     private var spacePinnedTabs: [Tab] {
@@ -454,7 +466,7 @@ struct SpaceView: View {
                 Image(systemName: "plus")
                     .font(.system(size: 13, weight: .semibold))
                 Text("New Page")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 13, weight: .regular))
                 Spacer()
             }
             .foregroundStyle(LexonTheme.tertiaryText(for: colorScheme))
@@ -475,46 +487,34 @@ struct SpaceView: View {
         }
     }
 
-    private var newTabButtonSectionWithClear: some View {
-        VStack(spacing: 0) {
-            SpaceSeparator(isHovering: $isSidebarHovered) {
-                browserManager.tabManager.clearRegularTabs(for: space.id)
+    private var regularTabsSection: some View {
+        VStack(spacing: 8) {
+            if !protectedTabs.isEmpty {
+                regularTabsContent(protectedTabs)
             }
-            .padding(.horizontal, 8)
-            .padding(.top, 4)
 
-            newTabButtonSection
-        }
-    }
+            if hasClearableTabs {
+                SpaceSeparator(isHovering: $isSidebarHovered, canClear: hasClearableTabs) {
+                    browserManager.tabManager.clearRegularTabs(for: space.id)
+                }
+                .padding(.horizontal, 8)
+                .padding(.top, 4)
+            }
 
-    private var regularTabsListInner: some View {
-        VStack(spacing: 2) {
-            if !tabs.isEmpty {
-                regularTabsContent
-            } else {
+            if !clearableTabs.isEmpty {
+                regularTabsContent(clearableTabs)
+            } else if protectedTabs.isEmpty {
                 emptyRegularTabsDropTarget
             }
+
+            newTabButtonSection
+            regularTabsBottomSpacer
         }
         .animation(.easeInOut(duration: 0.15), value: tabs.count)
     }
 
-    private var regularTabsSection: some View {
-        VStack(spacing: 8) {
-            if tabs.isEmpty {
-                newTabButtonSectionWithClear
-                regularTabsListInner
-            } else {
-                regularTabsListInner
-                newTabButtonSectionWithClear
-            }
-
-            regularTabsBottomSpacer
-        }
-    }
-
-    private var regularTabsContent: some View {
+    private func regularTabsContent(_ currentTabs: [Tab]) -> some View {
         VStack(spacing: 2) {
-            let currentTabs = tabs
             let split = splitManager
             let windowId = windowState.id
 
@@ -571,8 +571,9 @@ struct SpaceView: View {
 
     private func regularTabsView(currentTabs: [Tab]) -> some View {
         VStack(spacing: 2) {
-            ForEach(Array(rootTabs.enumerated()), id: \.element.id) { index, tab in
-                regularTabWithChildren(tab, index: index)
+            let sectionRoots = rootTabs(in: currentTabs)
+            ForEach(Array(sectionRoots.enumerated()), id: \.element.id) { index, tab in
+                regularTabWithChildren(tab, index: index, currentTabs: currentTabs)
             }
         }
     }
@@ -588,11 +589,11 @@ struct SpaceView: View {
         regularTabView(tab, index: index, nestingLevel: 0)
     }
 
-    private func regularTabWithChildren(_ tab: Tab, index: Int) -> some View {
+    private func regularTabWithChildren(_ tab: Tab, index: Int, currentTabs: [Tab]) -> some View {
         VStack(spacing: 2) {
             regularTabView(tab, index: index, nestingLevel: 0)
 
-            ForEach(browserManager.tabManager.childTabs(of: tab.id, in: space), id: \.id) { childTab in
+            ForEach(children(of: tab.id, in: currentTabs), id: \.id) { childTab in
                 regularTabView(childTab, index: childTab.index, nestingLevel: 1)
             }
         }
@@ -677,6 +678,39 @@ struct SpaceView: View {
 
     private func isLastTab(_ tab: Tab) -> Bool {
         return rootTabs.last?.id == tab.id
+    }
+
+    private func rootTabs(in currentTabs: [Tab]) -> [Tab] {
+        let currentTabIDs = Set(currentTabs.map(\.id))
+        return currentTabs
+            .filter { tab in
+                guard let parentTabId = tab.parentTabId else { return true }
+                return !currentTabIDs.contains(parentTabId)
+            }
+            .sorted { $0.index < $1.index }
+    }
+
+    private func children(of parentId: UUID, in currentTabs: [Tab]) -> [Tab] {
+        currentTabs
+            .filter { $0.parentTabId == parentId }
+            .sorted { $0.index < $1.index }
+    }
+
+    private func isProtectedFromClear(_ tab: Tab) -> Bool {
+        if tab.isLocked {
+            return true
+        }
+
+        var parentId = tab.parentTabId
+        while let currentParentId = parentId,
+              let parentTab = tabs.first(where: { $0.id == currentParentId }) {
+            if parentTab.isLocked {
+                return true
+            }
+            parentId = parentTab.parentTabId
+        }
+
+        return false
     }
 
     private var windowDragSpacer: some View {

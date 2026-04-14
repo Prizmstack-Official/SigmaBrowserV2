@@ -8,23 +8,20 @@ import SwiftUI
 
 struct SpaceSeparator: View {
     @Binding var isHovering: Bool
+    let canClear: Bool
     let onClear: () -> Void
     @EnvironmentObject var browserManager: BrowserManager
     @State private var isClearHovered: Bool = false
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        let hasTabs = browserManager.tabManager.currentSpace.map {
-            !browserManager.tabManager.tabs(in: $0).isEmpty
-        } ?? false
-
         HStack(spacing: 0) {
             RoundedRectangle(cornerRadius: 100)
                 .fill(isHovering ? LexonTheme.border(for: colorScheme) : Color.clear)
                 .frame(height: 1)
                 .animation(.smooth(duration: 0.1), value: isHovering)
 
-            if hasTabs && isHovering {
+            if canClear && isHovering {
                 Button(action: onClear) {
                     HStack(spacing: 7) {
                         Image(systemName: "arrow.down")

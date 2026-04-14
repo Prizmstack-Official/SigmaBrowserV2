@@ -181,6 +181,9 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
 
     // Debounce task for SPA navigation persistence
     private var spaPersistDebounceTask: Task<Void, Never>?
+    private var suppressedCommandClickURL: URL?
+    private var suppressedCommandClickTimestamp: Date?
+    private let commandClickSuppressionInterval: TimeInterval = 1.0
 
     // MARK: - Tab State
     var isUnloaded: Bool {
@@ -2006,6 +2009,8 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
     private func injectLinkHoverJavaScript(to webView: WKWebView) {
         let linkHoverScript = """
             (function() {
+                if (window.__nookLinkHoverInstalled) { return; }
+                window.__nookLinkHoverInstalled = true;
                 var currentHoveredLink = null;
                 var isCommandPressed = false;
                 var hoverCheckInterval = null;
@@ -2094,6 +2099,9 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
                             if (target.tagName === 'A' && target.href) {
                                 e.preventDefault();
                                 e.stopPropagation();
+                                if (typeof e.stopImmediatePropagation === 'function') {
+                                    e.stopImmediatePropagation();
+                                }
 
                                 if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.commandClick) {
                                     window.webkit.messageHandlers.commandClick.postMessage(target.href);
@@ -2103,7 +2111,7 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
                             target = target.parentElement;
                         }
                     }
-                });
+                }, true);
             })();
             """
 
@@ -2629,6 +2637,11 @@ extension Tab: WKNavigationDelegate {
         decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
+        if shouldSuppressCommandClickNavigation(for: navigationAction) {
+            decisionHandler(.cancel)
+            return
+        }
+
         if let url = navigationAction.request.url,
             navigationAction.targetFrame?.isMainFrame == true
         {
@@ -2911,6 +2924,7 @@ extension Tab: WKScriptMessageHandler {
 
     private func handleCommandClick(url: URL) {
         guard let browserManager else { return }
+        suppressCommandClickNavigation(to: url)
 
         // Create a new tab in the same workspace and focus it in the active window.
         let newTab = browserManager.tabManager.createNewTab(
@@ -3019,6 +3033,54 @@ extension Tab: WKScriptMessageHandler {
     private func shouldRedirectPopupToPeek() -> Bool {
         // Keep Option-click as an explicit "open in Peek" override for popups.
         isOptionKeyDown
+    }
+
+    private func suppressCommandClickNavigation(to url: URL) {
+        suppressedCommandClickURL = url
+        suppressedCommandClickTimestamp = Date()
+    }
+
+    private func shouldSuppressCommandClickNavigation(for navigationAction: WKNavigationAction) -> Bool {
+        guard navigationAction.navigationType == .linkActivated,
+              navigationAction.targetFrame?.isMainFrame == true,
+              let requestedURL = navigationAction.request.url,
+              let suppressedURL = suppressedCommandClickURL,
+              let suppressedAt = suppressedCommandClickTimestamp else {
+            return false
+        }
+
+        let isFresh = Date().timeIntervalSince(suppressedAt) <= commandClickSuppressionInterval
+        guard isFresh else {
+            clearSuppressedCommandClickNavigation()
+            return false
+        }
+
+        let matchesSuppressedURL = canonicalCommandClickURL(suppressedURL) == canonicalCommandClickURL(requestedURL)
+        if matchesSuppressedURL {
+            clearSuppressedCommandClickNavigation()
+        }
+
+        return matchesSuppressedURL
+    }
+
+    private func clearSuppressedCommandClickNavigation() {
+        suppressedCommandClickURL = nil
+        suppressedCommandClickTimestamp = nil
+    }
+
+    private func canonicalCommandClickURL(_ url: URL) -> String {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            return url.absoluteString
+        }
+
+        components.scheme = components.scheme?.lowercased()
+        components.host = components.host?.lowercased()
+
+        if components.path.isEmpty {
+            components.path = "/"
+        }
+
+        return components.string ?? url.absoluteString
     }
 
 }

@@ -89,7 +89,7 @@ struct SpaceTab: View {
                 
                 if tab.isRenaming {
                     TextField("", text: $tab.editingName)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(tab.isUnloaded ? LexonTheme.secondaryText(for: colorScheme) : textTab)
                         .textFieldStyle(.plain)
                         .onSubmit {
@@ -108,7 +108,7 @@ struct SpaceTab: View {
                         .focused($isTextFieldFocused)
                 } else {
                     Text(tab.name)
-                        .font(.system(size: 14, weight: isCurrentTab ? .semibold : .medium))
+                        .font(.system(size: 13, weight: isCurrentTab ? .medium : .regular))
                         .foregroundStyle(textTab)
                         .lineLimit(1)
                         .truncationMode(.tail)
