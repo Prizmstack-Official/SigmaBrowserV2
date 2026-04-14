@@ -152,16 +152,24 @@ enum LexonTheme {
 
 enum SidebarLayoutMetrics {
     static let shellPadding: CGFloat = 10
-    static let shellSpacing: CGFloat = 6
-    static let panelInset: CGFloat = 10
+    static let shellSpacing: CGFloat = 0
+    static let panelOuterInset: CGFloat = 10
+    static let panelSeamInset: CGFloat = 0
+    static let panelVerticalInset: CGFloat = 10
+    static let tabsOuterInset: CGFloat = 6
+    static let tabsSeamInset: CGFloat = 0
     static let railTopInset: CGFloat = 54
+
+    static var panelHorizontalInsets: CGFloat {
+        panelOuterInset + panelSeamInset
+    }
 
     static func contentWidth(for sidebarWidth: CGFloat) -> CGFloat {
         let availableWidth = sidebarWidth
             - (shellPadding * 2)
             - SidebarLayoutMetrics.shellSpacing
             - LexonTheme.sidebarRailWidth
-            - (panelInset * 2)
+            - SidebarLayoutMetrics.panelHorizontalInsets
         return max(availableWidth, 0)
     }
 }

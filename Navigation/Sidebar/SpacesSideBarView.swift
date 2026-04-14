@@ -87,6 +87,18 @@ struct SpacesSideBarView: View {
         )
     }
 
+    private var contentPanelLeadingInset: CGFloat {
+        nookSettings.sidebarPosition == .left
+            ? SidebarLayoutMetrics.panelSeamInset
+            : SidebarLayoutMetrics.panelOuterInset
+    }
+
+    private var contentPanelTrailingInset: CGFloat {
+        nookSettings.sidebarPosition == .left
+            ? SidebarLayoutMetrics.panelOuterInset
+            : SidebarLayoutMetrics.panelSeamInset
+    }
+
     private func sidebarContentPanel(effectiveProfileId: UUID?) -> some View {
         VStack(spacing: 14) {
             SidebarHeader(
@@ -104,7 +116,8 @@ struct SpacesSideBarView: View {
                 )
                 .environmentObject(browserManager)
                 .environment(windowState)
-                .padding(.horizontal, SidebarLayoutMetrics.panelInset)
+                .padding(.leading, contentPanelLeadingInset)
+                .padding(.trailing, contentPanelTrailingInset)
                 .modifier(FallbackDropBelowEssentialsModifier())
             }
 
@@ -123,15 +136,20 @@ struct SpacesSideBarView: View {
                 .environmentObject(browserManager)
                 .environment(windowState)
                 .environment(nookSettings)
-                .padding(.horizontal, SidebarLayoutMetrics.panelInset)
+                .padding(.leading, contentPanelLeadingInset)
+                .padding(.trailing, contentPanelTrailingInset)
 
             MediaControlsView()
                 .environmentObject(browserManager)
                 .environment(windowState)
-                .padding(.horizontal, SidebarLayoutMetrics.panelInset)
+                .padding(.leading, contentPanelLeadingInset)
+                .padding(.trailing, contentPanelTrailingInset)
                 .padding(.bottom, 2)
         }
-        .padding(SidebarLayoutMetrics.panelInset)
+        .padding(.top, SidebarLayoutMetrics.panelVerticalInset)
+        .padding(.bottom, SidebarLayoutMetrics.panelVerticalInset)
+        .padding(.leading, contentPanelLeadingInset)
+        .padding(.trailing, contentPanelTrailingInset)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 

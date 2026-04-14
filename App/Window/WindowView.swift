@@ -232,6 +232,7 @@ struct WindowView: View {
                 } else {
                     WebsiteLoadingIndicator()
                     WebsiteView()
+                        .padding(.top, sidebarAlignedTopInset)
                         .zIndex(2000)
                 }
             }
@@ -269,6 +270,7 @@ struct WindowView: View {
             }
 
             WebsiteView()
+                .padding(.top, sidebarAlignedTopInset)
                 .zIndex(2000)
 
             if shouldShowInlineSidebar && nookSettings.sidebarPosition == .right {
@@ -310,6 +312,14 @@ struct WindowView: View {
 
     private var topBarContentSpacing: CGFloat {
         shouldShowInlineSidebar ? TopBarMetrics.horizontalPadding : 0
+    }
+
+    private var sidebarAlignedTopInset: CGFloat {
+        if nookSettings.topBarAddressView {
+            return shouldShowInlineSidebar ? SidebarLayoutMetrics.shellPadding : 0
+        }
+
+        return windowState.isSidebarVisible ? SidebarLayoutMetrics.shellPadding : 0
     }
 
     private func websiteColumnClipShape(cornerRadius: CGFloat, hasTopBar: Bool) -> AnyShape {

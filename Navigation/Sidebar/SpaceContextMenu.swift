@@ -41,12 +41,12 @@ struct SpaceContextMenu: View {
 
             Divider()
 
-            // Rename (optional - only available for SpaceTitle)
+            // Rename (optional for surfaces that provide a rename flow)
             if let onEditName = onEditName {
                 Button {
                     onEditName()
                 } label: {
-                    Label("Rename", systemImage: "textformat")
+                    Label("Rename Workspace", systemImage: "textformat")
                 }
             }
 

@@ -24,7 +24,7 @@ struct SpaceTitle: View {
 
             if isRenaming {
                 TextField("", text: $draftName)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 14, weight: .regular))
                     .foregroundStyle(textColor)
                     .textFieldStyle(PlainTextFieldStyle())
                     .autocorrectionDisabled()
@@ -43,7 +43,7 @@ struct SpaceTitle: View {
                     }
             } else {
                 Text(space.name)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 14, weight: .regular))
                     .foregroundStyle(textColor)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -107,7 +107,6 @@ struct SpaceTitle: View {
         }
         .padding(.leading, 4)
         .padding(.trailing, 2)
-        .padding(.top, 6)
         .padding(.bottom, 6)
         .frame(maxWidth: .infinity)
         .background(hoverColor)

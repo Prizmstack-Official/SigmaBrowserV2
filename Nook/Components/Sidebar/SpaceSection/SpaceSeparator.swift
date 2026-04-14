@@ -25,9 +25,9 @@ struct SpaceSeparator: View {
                 Button(action: onClear) {
                     HStack(spacing: 7) {
                         Image(systemName: "arrow.down")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 9, weight: .medium))
                         Text("Clear")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 9, weight: .medium))
                     }
                     .foregroundStyle(foregroundColor)
                     .padding(.horizontal, 4)

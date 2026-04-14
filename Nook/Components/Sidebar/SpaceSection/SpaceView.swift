@@ -38,6 +38,7 @@ struct SpaceView: View {
     @Environment(BrowserWindowState.self) private var windowState
     @Environment(CommandPalette.self) private var commandPalette
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.nookSettings) private var nookSettings
     @EnvironmentObject var gradientColorManager: GradientColorManager
     @ObservedObject private var dragSession = NookDragSessionManager.shared
     @State private var canScrollUp: Bool = false
@@ -79,6 +80,18 @@ struct SpaceView: View {
 
     private var innerWidth: CGFloat {
         max(outerWidth - 16, 0)
+    }
+
+    private var contentLeadingInset: CGFloat {
+        nookSettings.sidebarPosition == .left
+            ? SidebarLayoutMetrics.tabsSeamInset
+            : SidebarLayoutMetrics.tabsOuterInset
+    }
+
+    private var contentTrailingInset: CGFloat {
+        nookSettings.sidebarPosition == .left
+            ? SidebarLayoutMetrics.tabsOuterInset
+            : SidebarLayoutMetrics.tabsSeamInset
     }
 
     private var tabs: [Tab] {
@@ -177,7 +190,8 @@ struct SpaceView: View {
 
             mainContentContainer
         }
-        .padding(.horizontal, 6)
+        .padding(.leading, contentLeadingInset)
+        .padding(.trailing, contentTrailingInset)
         .frame(minWidth: 0, maxWidth: outerWidth, alignment: .leading)
         .contentShape(Rectangle())
         .coordinateSpace(name: "SpaceViewCoordinateSpace")
@@ -466,7 +480,7 @@ struct SpaceView: View {
                 Image(systemName: "plus")
                     .font(.system(size: 13, weight: .semibold))
                 Text("New Page")
-                    .font(.system(size: 13, weight: .regular))
+                    .font(.system(size: 12, weight: .regular))
                 Spacer()
             }
             .foregroundStyle(LexonTheme.tertiaryText(for: colorScheme))

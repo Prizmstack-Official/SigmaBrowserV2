@@ -68,6 +68,7 @@ struct SpacesListItem: View {
         }
         .contextMenu {
             spaceContextMenu
+                .environmentObject(browserManager)
         }
     }
 
@@ -115,51 +116,29 @@ struct SpacesListItem: View {
 
     @ViewBuilder
     private var spaceContextMenu: some View {
-        Button {
-            showSpaceEditDialog()
-        } label: {
-            Label("Space Settings", systemImage: "gear")
-        }
-
-        if browserManager.tabManager.spaces.count > 1 {
-            Button(role: .destructive) {
-                showDeleteConfirmation()
-            } label: {
-                Label("Delete Space", systemImage: "trash")
+        SpaceContextMenu(
+            space: space,
+            canDelete: canDeleteSpace,
+            onEditName: showRenameDialog,
+            onEditIcon: {
+                showSpaceEditDialog(mode: .icon)
+            },
+            onOpenSettings: {
+                showSpaceEditDialog(mode: .icon)
+            },
+            onDeleteSpace: {
+                browserManager.tabManager.removeSpace(space.id)
             }
-        }
+        )
     }
 
     // MARK: - Helper Methods
 
-    private func showDeleteConfirmation() {
-        // Count both regular and space-pinned tabs
-        let regularTabsCount = browserManager.tabManager.tabsBySpace[space.id]?.count ?? 0
-        let spacePinnedTabsCount = browserManager.tabManager.spacePinnedTabs(for: space.id).count
-        let tabsCount = regularTabsCount + spacePinnedTabsCount
-
-        browserManager.dialogManager.showDialog(
-            SpaceDeleteConfirmationDialog(
-                spaceName: space.name,
-                spaceIcon: space.icon,
-                tabsCount: tabsCount,
-                isLastSpace: browserManager.tabManager.spaces.count <= 1,
-                onDelete: {
-                    browserManager.tabManager.removeSpace(space.id)
-                    browserManager.dialogManager.closeDialog()
-                },
-                onCancel: {
-                    browserManager.dialogManager.closeDialog()
-                }
-            )
-        )
-    }
-
-    private func showSpaceEditDialog() {
+    private func showRenameDialog() {
         browserManager.dialogManager.showDialog(
             SpaceEditDialog(
                 space: space,
-                mode: .icon,
+                mode: .rename,
                 onSave: { draft in
                     browserManager.tabManager.updateSpaceSettings(spaceId: space.id, using: draft)
                     browserManager.dialogManager.closeDialog()
@@ -169,6 +148,26 @@ struct SpacesListItem: View {
                 }
             )
         )
+    }
+
+    private func showSpaceEditDialog(mode: SpaceEditDialog.Mode = .icon) {
+        browserManager.dialogManager.showDialog(
+            SpaceEditDialog(
+                space: space,
+                mode: mode,
+                onSave: { draft in
+                    browserManager.tabManager.updateSpaceSettings(spaceId: space.id, using: draft)
+                    browserManager.dialogManager.closeDialog()
+                },
+                onCancel: {
+                    browserManager.dialogManager.closeDialog()
+                }
+            )
+        )
+    }
+
+    private var canDeleteSpace: Bool {
+        browserManager.tabManager.spaces.count > 1
     }
 
     private func isEmoji(_ string: String) -> Bool {

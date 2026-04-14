@@ -70,7 +70,7 @@ private struct SplitHalfTab: View {
                             .frame(width: 18, height: 18)
                             .clipShape(RoundedRectangle(cornerRadius: 4))
                         Text(tab.name)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 12, weight: .regular))
                             .foregroundStyle(textTab)
                             .lineLimit(1)
                             .truncationMode(.tail)
