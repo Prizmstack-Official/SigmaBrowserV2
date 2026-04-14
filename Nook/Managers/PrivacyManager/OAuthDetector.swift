@@ -160,7 +160,7 @@ enum OAuthDetector {
     /// Broad check: URL is plausibly an OAuth/SSO popup.
     ///
     /// Use this when erring on the side of inclusion is fine (e.g. routing a popup to a
-    /// miniwindow is a better UX even if we're occasionally wrong).
+    /// temporary auth subtab even if we're occasionally wrong).
     static func isLikelyOAuthPopupURL(_ url: URL) -> Bool {
         if isLikelyOAuthURL(url) { return true }
 

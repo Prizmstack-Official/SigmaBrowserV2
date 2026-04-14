@@ -1172,6 +1172,8 @@ class TabManager: ObservableObject {
 
         guard let tab = removed else { return false }
 
+        browserManager?.authenticationManager.handleIdentityFlowTabClosed(tab.id)
+
         for child in directChildren(of: id) {
             child.parentTabId = nil
         }

@@ -3102,37 +3102,10 @@ extension Tab: WKUIDelegate {
             !isFromExtension &&
             requestedURL.map { isLikelyAuthPopup(url: $0) } == true
 
-        // OAuth and sign-in flows should stay in a disposable miniwindow.
-        if isAuthPopup, let url = requestedURL {
-            print("🔐 [Tab] OAuth/signin popup detected, opening in miniwindow: \(url.absoluteString)")
-
-            if let providerHost = url.host?.lowercased() {
-                bm.oauthAllowDomain(providerHost)
-            }
-
-            let parentTabId = self.id
-            bm.externalMiniWindowManager.present(url: url) { [weak bm] success, finalURL in
-                print("🔐 [Tab] Miniwindow OAuth flow completed: success=\(success), url=\(finalURL?.absoluteString ?? "nil")")
-
-                guard let bm = bm else { return }
-
-                if let parentTab = bm.tabManager.allTabs().first(where: { $0.id == parentTabId }) {
-                    DispatchQueue.main.async {
-                        if success {
-                            bm.tabManager.setActiveTab(parentTab)
-                            parentTab.activeWebView.reload()
-                            print("🔐 [Tab] Parent tab reloaded after successful OAuth")
-                        }
-                    }
-                }
-            }
-
-            return nil
-        }
-
         // For regular popups, only use Peek when the user explicitly requests it.
         if !isFromExtension,
             let url = requestedURL,
+            !isAuthPopup,
             shouldRedirectPopupToPeek()
         {
 
@@ -3151,6 +3124,15 @@ extension Tab: WKUIDelegate {
         // Create a new tab to manage this webView
         let space = bm.tabManager.currentSpace
         let newTab = bm.tabManager.createPopupTab(in: space, parentTab: self)
+        if isAuthPopup, let url = requestedURL {
+            print("🔐 [Tab] OAuth/signin popup detected, opening as child tab: \(url.absoluteString)")
+            if let providerHost = url.host?.lowercased() {
+                bm.oauthAllowDomain(providerHost)
+                newTab.oauthProviderHost = providerHost
+            }
+            newTab.isOAuthFlow = true
+            newTab.oauthParentTabId = self.id
+        }
         if let activeWindow = bm.windowRegistry?.activeWindow {
             bm.selectTab(newTab, in: activeWindow)
         }
@@ -3266,14 +3248,22 @@ extension Tab: WKUIDelegate {
            (isSuccess || isError || !OAuthDetector.isLikelyOAuthURL(url)) {
             
             print("🔐 [Tab] OAuth flow completed: success=\(isSuccess), closing OAuth tab")
+
+            bm.authenticationManager.handleIdentityFlowTabCompletion(
+                self.id,
+                success: isSuccess,
+                finalURL: url
+            )
             
             // Find and reload the parent tab
             if let parentTab = bm.tabManager.allTabs().first(where: { $0.id == parentTabId }) {
                 DispatchQueue.main.async { [weak bm] in
                     // Switch to parent tab
                     bm?.tabManager.setActiveTab(parentTab)
-                    // Reload parent tab to pick up authenticated state
-                    parentTab.activeWebView.reload()
+                    // Reload parent tab to pick up authenticated state after successful auth.
+                    if isSuccess {
+                        parentTab.activeWebView.reload()
+                    }
                 }
             }
             
@@ -3286,20 +3276,6 @@ extension Tab: WKUIDelegate {
         }
     }
     
-    private func handleMiniWindowAuthCompletion(success: Bool, finalURL: URL?) {
-        print(
-            "🪟 [Tab] Popup OAuth flow completed: success=\(success), finalURL=\(finalURL?.absoluteString ?? "nil")"
-        )
-
-        if success {
-            DispatchQueue.main.async { [weak self] in
-                self?.activeWebView.reload()
-            }
-        } else {
-            print("🪟 [Tab] Popup OAuth authentication failed")
-        }
-    }
-
     public func webView(
         _ webView: WKWebView,
         runJavaScriptAlertPanelWithMessage message: String,

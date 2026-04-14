@@ -409,7 +409,6 @@ class BrowserManager: ObservableObject {
     var keyboardShortcutManager: KeyboardShortcutManager?
     weak var nookSettings: NookSettingsService?
 
-    var externalMiniWindowManager = ExternalMiniWindowManager()
     @Published var peekManager = PeekManager()
 
     // TEMPORARY: Will be removed when cross-window coordination is eliminated
@@ -567,7 +566,6 @@ class BrowserManager: ObservableObject {
         self.trackingProtectionManager.attach(browserManager: self)
         // Note: tracking protection will be configured after settingsManager injection
 
-        self.externalMiniWindowManager.attach(browserManager: self)
         self.peekManager.attach(browserManager: self)
         bindPeekManagerUpdates()
         self.authenticationManager.attach(browserManager: self)

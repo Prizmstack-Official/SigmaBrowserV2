@@ -72,7 +72,7 @@ final class AuthenticationManager: NSObject {
     private let credentialStore = BasicAuthCredentialStore()
     private var activeIdentityRequest: IdentityRequest?
     private weak var activeIdentityTab: Tab?
-    private var waitingForMiniWindow = false
+    private var activeIdentityFlowTabId: UUID?
     func attach(browserManager: BrowserManager) {
         self.browserManager = browserManager
     }
@@ -93,15 +93,29 @@ final class AuthenticationManager: NSObject {
             return
         }
 
+        let targetSpace = tab.spaceId.flatMap { spaceId in
+            manager.tabManager.spaces.first(where: { $0.id == spaceId })
+        } ?? manager.tabManager.currentSpace
+        let authTab = manager.tabManager.createNewTab(
+            url: request.url.absoluteString,
+            in: targetSpace,
+            parentTab: tab
+        )
+        authTab.isOAuthFlow = true
+        authTab.oauthParentTabId = tab.id
+        if let providerHost = request.url.host?.lowercased() {
+            authTab.oauthProviderHost = providerHost
+            manager.oauthAllowDomain(providerHost)
+        }
+
         activeIdentityRequest = request
         activeIdentityTab = tab
-        waitingForMiniWindow = true
+        activeIdentityFlowTabId = authTab.id
 
-        manager.externalMiniWindowManager.present(url: request.url) { [weak self] success, finalURL in
-            guard let self else { return }
-            Task { @MainActor in
-                self.handleMiniWindowCompletion(success: success, finalURL: finalURL)
-            }
+        if let activeWindow = manager.windowRegistry?.activeWindow {
+            manager.selectTab(authTab, in: activeWindow)
+        } else {
+            manager.tabManager.setActiveTab(authTab)
         }
     }
 
@@ -149,13 +163,13 @@ final class AuthenticationManager: NSObject {
         }
     }
 
-    private func handleMiniWindowCompletion(success: Bool, finalURL: URL?) {
+    func handleIdentityFlowTabCompletion(_ tabId: UUID, success: Bool, finalURL: URL?) {
+        guard activeIdentityFlowTabId == tabId else { return }
         guard let request = activeIdentityRequest, let tab = activeIdentityTab else {
             clearActiveIdentityState()
             return
         }
 
-        waitingForMiniWindow = false
         defer { clearActiveIdentityState() }
 
         guard success, let url = finalURL else {
@@ -167,17 +181,36 @@ final class AuthenticationManager: NSObject {
         tab.activeWebView.reload()
     }
 
+    func handleIdentityFlowTabClosed(_ tabId: UUID) {
+        guard activeIdentityFlowTabId == tabId else { return }
+        guard let request = activeIdentityRequest, let tab = activeIdentityTab else {
+            clearActiveIdentityState()
+            return
+        }
+
+        clearActiveIdentityState()
+        tab.finishIdentityFlow(requestId: request.requestId, with: .cancelled)
+    }
+
     private func cancelActiveIdentityFlow() {
-        if let request = activeIdentityRequest, let tab = activeIdentityTab {
+        let request = activeIdentityRequest
+        let tab = activeIdentityTab
+        let flowTabId = activeIdentityFlowTabId
+
+        if let request, let tab {
             tab.finishIdentityFlow(requestId: request.requestId, with: .cancelled)
         }
         clearActiveIdentityState()
+
+        if let flowTabId {
+            browserManager?.tabManager.removeTab(flowTabId)
+        }
     }
 
     private func clearActiveIdentityState() {
         activeIdentityRequest = nil
         activeIdentityTab = nil
-        waitingForMiniWindow = false
+        activeIdentityFlowTabId = nil
     }
 
     private func presentBasicCredentialPrompt(
