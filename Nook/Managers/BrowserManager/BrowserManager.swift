@@ -1040,8 +1040,8 @@ class BrowserManager: ObservableObject {
             ?? windowState.currentProfileId.flatMap { pid in
                 tabManager.spaces.first(where: { $0.profileId == pid })
             }
-        let parentTab = currentTab(for: windowState)
-        let newTab = tabManager.createNewTab(url: url, in: targetSpace, parentTab: parentTab)
+        // New Page / New Tab actions should always create a top-level tab.
+        let newTab = tabManager.createNewTab(url: url, in: targetSpace)
         selectTab(newTab, in: windowState)
     }
 
@@ -2008,8 +2008,7 @@ class BrowserManager: ObservableObject {
 
         let newTab = tabManager.createNewTab(
             url: url.absoluteString,
-            in: tabManager.currentSpace,
-            parentTab: tabManager.currentTab
+            in: tabManager.currentSpace
         )
         tabManager.setActiveTab(newTab)
     }
