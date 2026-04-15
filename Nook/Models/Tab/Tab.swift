@@ -35,6 +35,8 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
     /// Whether the browser should auto-detect completion and drive the flow lifecycle.
     /// Native-managed identity requests use this; website-managed popups should not.
     var managesOAuthLifecycle: Bool = false
+    /// Whether this tab is hosted in a standalone popup window instead of the tab strip.
+    var isStandalonePopupWindow: Bool = false
     /// Reference to the parent tab that initiated this OAuth flow
     var oauthParentTabId: UUID?
     /// The OAuth provider host (e.g., "accounts.google.com") for tracking protection exemption
@@ -1765,6 +1767,50 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
         print("✅ [Tab] Main WebView cleanup completed for: \(name)")
     }
 
+    /// Lightweight teardown for standalone OAuth popup windows.
+    /// Avoids the aggressive JS kill script so providers can finish any final
+    /// close/postMessage handoff without the app freezing or interrupting IPC.
+    public func cleanupStandalonePopupWebView() {
+        guard let webView = _webView else { return }
+
+        print("🧹 [Tab] Performing lightweight standalone popup cleanup for: \(name)")
+
+        webView.stopLoading()
+
+        let controller = webView.configuration.userContentController
+        let handlerNames = [
+            "linkHover",
+            "commandHover",
+            "commandClick",
+            "pipStateChange",
+            "mediaStateChange_\(id.uuidString)",
+            "backgroundColor_\(id.uuidString)",
+            "historyStateDidChange",
+            "NookIdentity",
+            "nookShortcutDetect",
+        ]
+        for handlerName in handlerNames {
+            controller.removeScriptMessageHandler(forName: handlerName)
+        }
+
+        if let focusableWebView = webView as? FocusableWKWebView {
+            focusableWebView.contextMenuBridge?.detach()
+            focusableWebView.contextMenuBridge = nil
+        }
+
+        removeThemeColorObserver(from: webView)
+        removeNavigationStateObservers(from: webView)
+
+        webView.navigationDelegate = nil
+        webView.uiDelegate = nil
+        webView.removeFromSuperview()
+        browserManager?.webViewCoordinator?.removeWebViewFromContainers(webView)
+
+        _webView = nil
+
+        print("✅ [Tab] Lightweight standalone popup cleanup completed for: \(name)")
+    }
+
     public override func observeValue(
         forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?,
         context: UnsafeMutableRawPointer?
@@ -2240,6 +2286,10 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
     }
 
     func activate() {
+        if isStandalonePopupWindow {
+            _webView?.window?.makeKeyAndOrderFront(nil)
+            return
+        }
         browserManager?.tabManager.setActiveTab(self)
         // Media state is automatically tracked by injected script
     }
@@ -3149,6 +3199,7 @@ extension Tab: WKUIDelegate {
             )
             newTab.isPopupHost = true
             newTab.isOAuthFlow = true
+            newTab.isStandalonePopupWindow = true
             newTab.oauthParentTabId = self.id
             newTab._webView = newWebView
 

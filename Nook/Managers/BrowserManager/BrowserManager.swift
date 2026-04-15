@@ -579,7 +579,22 @@ class BrowserManager: ObservableObject {
         standaloneOAuthPopupWindows.removeValue(forKey: tabId)
         standaloneOAuthPopupDelegates.removeValue(forKey: tabId)
 
-        tab?.performComprehensiveWebViewCleanup()
+        let cleanupDelay: TimeInterval = notifyClose ? 0.0 : 0.75
+        if let tab {
+            if notifyClose == false,
+               tab.isOAuthFlow,
+               tab.managesOAuthLifecycle == false,
+               let parentTabId = tab.oauthParentTabId,
+               let parentTab = tabManager.allTabs().first(where: { $0.id == parentTabId }) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    parentTab.activeWebView.reload()
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + cleanupDelay) {
+                tab.cleanupStandalonePopupWebView()
+            }
+        }
 
         if notifyClose {
             authenticationManager.handleIdentityFlowTabClosed(tabId)
