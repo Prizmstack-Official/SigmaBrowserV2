@@ -22,6 +22,10 @@
 	</array>
 	<key>LSHandlerRank</key>
 	<string>Owner</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Noriq needs access to your camera for video calls and web applications that request camera access.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Noriq needs access to your microphone for voice and video calls and web applications that request microphone access.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoadsInWebContent</key>
