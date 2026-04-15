@@ -231,15 +231,25 @@ struct WindowView: View {
                 }
             }
         }
-        .overlay(alignment: .topTrailing) {
-            if let presentedPanel = windowState.presentedUtilityPanel {
-                BrowserUtilityPanelView(panel: presentedPanel)
-                    .environmentObject(browserManager)
-                    .environment(windowState)
-                    .padding(.top, nookSettings.topBarAddressView ? TopBarMetrics.height + 10 : 12)
-                    .padding(.trailing, 12)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .zIndex(3500)
+        .coordinateSpace(name: "WindowSpace")
+        .overlayPreferenceValue(BrowserUtilityPanelButtonFramePreferenceKey.self) { buttonFrames in
+            GeometryReader { proxy in
+                if let presentedPanel = windowState.presentedUtilityPanel {
+                    let panelCenter = BrowserUtilityPanelLayout.center(
+                        for: presentedPanel,
+                        buttonFrame: buttonFrames[presentedPanel],
+                        in: proxy.size,
+                        fallbackTopInset: nookSettings.topBarAddressView ? TopBarMetrics.height : BrowserUtilityPanelLayout.windowInset
+                    )
+
+                    BrowserUtilityPanelView(panel: presentedPanel)
+                        .environmentObject(browserManager)
+                        .environment(windowState)
+                        .position(panelCenter)
+                        .transition(.browserUtilityPanel)
+                        .id(presentedPanel)
+                        .zIndex(3500)
+                }
             }
         }
         .padding(.bottom, 8)
@@ -310,10 +320,10 @@ struct WindowView: View {
 
     private var sidebarAlignedTopInset: CGFloat {
         if nookSettings.topBarAddressView {
-            return shouldShowInlineSidebar ? SidebarLayoutMetrics.shellPadding : 0
+            return shouldShowInlineSidebar ? SidebarLayoutMetrics.shellInsets.top : 0
         }
 
-        return windowState.isSidebarVisible ? SidebarLayoutMetrics.shellPadding : 0
+        return windowState.isSidebarVisible ? SidebarLayoutMetrics.shellInsets.top : 0
     }
 
     private func websiteColumnClipShape(cornerRadius: CGFloat, hasTopBar: Bool) -> AnyShape {

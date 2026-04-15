@@ -92,6 +92,8 @@ struct SpaceTab: View {
                         .font(.system(size: 12, weight: .regular))
                         .foregroundStyle(tab.isUnloaded ? LexonTheme.secondaryText(for: colorScheme) : textTab)
                         .textFieldStyle(.plain)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .layoutPriority(1)
                         .onSubmit {
                             tab.saveRename()
                         }
@@ -113,9 +115,10 @@ struct SpaceTab: View {
                         color: textTab,
                         isActive: isDoneHovering && !tab.isLocked
                     )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
                     .textSelection(.disabled)
                 }
-                Spacer()
 
                 if isHovering || tab.isLocked {
                     HStack(spacing: 4) {

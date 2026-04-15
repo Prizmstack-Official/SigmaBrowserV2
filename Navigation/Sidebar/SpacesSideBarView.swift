@@ -69,7 +69,7 @@ struct SpacesSideBarView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: LexonTheme.chromeCornerRadius, style: .continuous))
         .shadow(color: LexonTheme.shadow(for: colorScheme), radius: 16, x: 0, y: 8)
-        .padding(SidebarLayoutMetrics.shellPadding)
+        .padding(SidebarLayoutMetrics.shellInsets)
         .background(
             GeometryReader { geo in
                 Color.clear

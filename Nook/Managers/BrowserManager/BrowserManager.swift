@@ -967,14 +967,14 @@ class BrowserManager: ObservableObject {
     }
 
     func toggleUtilityPanel(_ panel: BrowserUtilityPanel, for windowState: BrowserWindowState) {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
             windowState.presentedUtilityPanel =
                 windowState.presentedUtilityPanel == panel ? nil : panel
         }
     }
 
     func dismissUtilityPanel(for windowState: BrowserWindowState) {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
             windowState.presentedUtilityPanel = nil
         }
     }
@@ -2763,7 +2763,7 @@ class BrowserManager: ObservableObject {
     /// Show downloads (placeholder implementation)
     func showDownloads() {
         guard let windowState = windowRegistry?.activeWindow else { return }
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
             windowState.presentedUtilityPanel = .downloads
         }
     }
@@ -2771,7 +2771,7 @@ class BrowserManager: ObservableObject {
     /// Show history (placeholder implementation)
     func showHistory() {
         guard let windowState = windowRegistry?.activeWindow else { return }
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
             windowState.presentedUtilityPanel = .history
         }
     }

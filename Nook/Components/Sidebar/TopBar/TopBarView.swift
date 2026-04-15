@@ -552,6 +552,7 @@ struct BrowserUtilityButtonsView: View {
 
     private var historyButton: some View {
         BrowserUtilityPanelButton(
+            panel: .history,
             title: "History",
             systemImage: "clock.arrow.circlepath",
             navButtonColor: navButtonColor,
@@ -563,6 +564,7 @@ struct BrowserUtilityButtonsView: View {
 
     private var downloadsButton: some View {
         BrowserUtilityPanelButton(
+            panel: .downloads,
             title: "Downloads",
             systemImage: "arrow.down.circle",
             navButtonColor: navButtonColor,
@@ -579,6 +581,7 @@ struct BrowserUtilityButtonsView: View {
 }
 
 struct BrowserUtilityPanelButton: View {
+    let panel: BrowserUtilityPanel
     let title: String
     let systemImage: String
     let navButtonColor: Color
@@ -595,6 +598,14 @@ struct BrowserUtilityPanelButton: View {
             )
         }
         .buttonStyle(.plain)
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: BrowserUtilityPanelButtonFramePreferenceKey.self,
+                    value: [panel: proxy.frame(in: .named("WindowSpace"))]
+                )
+            }
+        }
     }
 }
 
@@ -658,7 +669,10 @@ struct BrowserUtilityPanelView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: panel == .history ? 430 : 400, height: 520)
+        .frame(
+            width: BrowserUtilityPanelLayout.size(for: panel).width,
+            height: BrowserUtilityPanelLayout.size(for: panel).height
+        )
         .background(panelBackground)
         .overlay {
             RoundedRectangle(cornerRadius: LexonTheme.chromeCornerRadius, style: .continuous)
