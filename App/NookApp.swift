@@ -126,7 +126,6 @@ struct NookApp: App {
                     windowId,
                     tabManager: browserManager.tabManager
                 )
-                browserManager.splitManager.cleanupWindow(windowId)
 
                 // Clean up incognito window if applicable
                 if let windowState = browserManager.windowRegistry?.windows[windowId],

@@ -298,12 +298,6 @@ struct TabFolderView: View {
 
     private func folderTabContextMenu(_ tab: Tab) -> some View {
         VStack {
-            // Split view
-            Button { browserManager.splitManager.enterSplit(with: tab, placeOn: .right, in: windowState) }
-            label: { Label("Open in Split (Right)", systemImage: "rectangle.split.2x1") }
-            Button { browserManager.splitManager.enterSplit(with: tab, placeOn: .left, in: windowState) }
-            label: { Label("Open in Split (Left)", systemImage: "rectangle.split.2x1") }
-
             Button { browserManager.duplicateCurrentTab() }
             label: { Label("Duplicate Tab", systemImage: "doc.on.doc") }
 

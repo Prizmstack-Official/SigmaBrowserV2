@@ -261,7 +261,6 @@ struct SpaceTab: View {
 
     @ViewBuilder
     private var actionsMenuSection: some View {
-        splitMenu
         if tab.parentTabId != nil {
             Button {
                 browserManager.tabManager.promoteSubtabToRegular(tab.id)
@@ -275,25 +274,6 @@ struct SpaceTab: View {
             onToggleLock()
         } label: {
             Label(tab.isLocked ? "Unlock Tab" : "Lock Tab", systemImage: tab.isLocked ? "lock.open" : "lock.fill")
-        }
-    }
-
-    @ViewBuilder
-    private var splitMenu: some View {
-        Menu {
-            Button {
-                browserManager.splitManager.enterSplit(with: tab, placeOn: .right, in: windowState)
-            } label: {
-                Label("Right", systemImage: "rectangle.righthalf.filled")
-            }
-
-            Button {
-                browserManager.splitManager.enterSplit(with: tab, placeOn: .left, in: windowState)
-            } label: {
-                Label("Left", systemImage: "rectangle.lefthalf.filled")
-            }
-        } label: {
-            Label("Open in Split", systemImage: "rectangle.split.2x1")
         }
     }
 

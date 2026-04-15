@@ -60,6 +60,14 @@ class BrowserConfiguration {
         // Web inspector will be enabled per-webview using isInspectable property
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
 
+        // Disable Apple's SOAuthorizationCoordinator from intercepting subframe navigations
+        // (e.g. Google account-switcher clicks on accounts.google.com).
+        // Without this, the SSO coordinator silently swallows the navigation when no
+        // enterprise SSO extension is registered for the target domain.
+        if config.responds(to: NSSelectorFromString("_setSOAuthorizationEnabled:")) {
+            config.setValue(false, forKey: "_SOAuthorizationEnabled")
+        }
+
         // Note: webExtensionController will be set by ExtensionManager during initialization
         // Note: WebAuthn/Passkey support is enabled by default in WKWebView on macOS 13.3+
         // and requires only: entitlements, WKUIDelegate methods, and Info.plist descriptions

@@ -76,7 +76,6 @@ Nook/
 │   │   ├── SettingsManager/   # User preferences
 │   │   ├── DialogManager/     # System dialogs and alerts
 │   │   ├── SearchManager/     # Search functionality
-│   │   ├── SplitViewManager/  # Split-screen tab viewing
 │   │   ├── PeekManager/       # Quick preview feature
 │   │   ├── DragManager/       # Drag-and-drop operations
 │   │   └── ...

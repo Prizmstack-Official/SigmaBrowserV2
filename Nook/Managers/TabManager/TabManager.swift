@@ -1187,9 +1187,6 @@ class TabManager: ObservableObject {
             return false
         }
 
-        // Notify SplitViewManager about tab closure to prevent zombie state
-        browserManager?.splitManager.handleTabClosure(id)
-        
         let wasCurrent = (currentTab?.id == id)
         var removed: Tab?
         var removedSpaceId: UUID?
@@ -1334,25 +1331,6 @@ class TabManager: ObservableObject {
         // Update website shortcut detector with the new tab's URL
         browserManager?.keyboardShortcutManager?.websiteShortcutDetector.updateCurrentURL(tab.url)
         
-        // Do not auto-exit split when leaving split panes; preserve split state
-
-        // Update active side in split view for all windows that contain this tab
-        // Also update windowState.currentTabId for windows that have this tab in split view
-        if let bm = browserManager {
-            for (windowId, windowState) in bm.windowRegistry?.windows ?? [:] {
-                // Check if this tab is in split view for this window
-                if bm.splitManager.isSplit(for: windowId) {
-                    let state = bm.splitManager.getSplitState(for: windowId)
-                    // If tab is on left or right side, update active side and window's current tab
-                    if state.leftTabId == tab.id || state.rightTabId == tab.id {
-                        bm.splitManager.updateActiveSide(for: tab.id, in: windowId)
-                        // Update window's current tab ID so other UI components work correctly
-                        windowState.currentTabId = tab.id
-                    }
-                }
-            }
-        }
-
         // Save this tab as the active tab for the appropriate space
         print("💾 Saving tab as active for space...")
         if let sid = tab.spaceId, let space = spaces.first(where: { $0.id == sid }) {
@@ -1847,20 +1825,6 @@ class TabManager: ObservableObject {
 
         case (.none, _), (_, .none):
             print("⚠️ Invalid drag operation: \(operation)")
-        }
-        // If the moved tab is currently part of an active split, dissolve the split.
-        // Keep the opposite side focused so the remaining pane stays visible.
-        if let sm = browserManager?.splitManager, let bm = browserManager {
-            // Check all windows for split state
-            for (windowId, _) in bm.windowRegistry?.windows ?? [:] {
-                if sm.isSplit(for: windowId) {
-                    if sm.leftTabId(for: windowId) == tab.id {
-                        sm.exitSplit(keep: .right, for: windowId)
-                    } else if sm.rightTabId(for: windowId) == tab.id {
-                        sm.exitSplit(keep: .left, for: windowId)
-                    }
-                }
-            }
         }
     }
     

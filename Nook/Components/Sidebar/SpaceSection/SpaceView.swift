@@ -67,7 +67,6 @@ struct SpaceView: View {
     let onMoveTabUp: (Tab) -> Void
     let onMoveTabDown: (Tab) -> Void
     let onMuteTab: (Tab) -> Void
-    @EnvironmentObject var splitManager: SplitViewManager
 
     private var outerWidth: CGFloat {
         let visibleWidth = windowState.sidebarWidth
@@ -461,9 +460,6 @@ struct SpaceView: View {
 
     private func pinnedTabContextMenu(_ tab: Tab) -> some View {
         VStack {
-            Button { browserManager.splitManager.enterSplit(with: tab, placeOn: .right, in: windowState) } label: { Label("Open in Split (Right)", systemImage: "rectangle.split.2x1") }
-            Button { browserManager.splitManager.enterSplit(with: tab, placeOn: .left, in: windowState) } label: { Label("Open in Split (Left)", systemImage: "rectangle.split.2x1") }
-            Divider()
             Button { browserManager.tabManager.unpinTabFromSpace(tab) } label: { Label("Unpin from Space", systemImage: "pin.slash") }
             Button { onPinTab(tab) } label: { Label("Pin Globally", systemImage: "pin.circle") }
             Divider()
@@ -529,21 +525,7 @@ struct SpaceView: View {
 
     private func regularTabsContent(_ currentTabs: [Tab]) -> some View {
         VStack(spacing: 2) {
-            let split = splitManager
-            let windowId = windowState.id
-
-            if split.isSplit(for: windowId),
-               !currentTabs.contains(where: { $0.parentTabId != nil }),
-               let leftId = split.leftTabId(for: windowId), let rightId = split.rightTabId(for: windowId),
-               let leftIdx = currentTabs.firstIndex(where: { $0.id == leftId }),
-               let rightIdx = currentTabs.firstIndex(where: { $0.id == rightId }),
-               leftIdx >= 0, rightIdx >= 0,
-               leftIdx < currentTabs.count, rightIdx < currentTabs.count,
-               leftIdx != rightIdx {
-                splitTabsView(currentTabs: currentTabs, leftIdx: leftIdx, rightIdx: rightIdx)
-            } else {
-                regularTabsView(currentTabs: currentTabs)
-            }
+            regularTabsView(currentTabs: currentTabs)
         }
         .frame(minWidth: 0, maxWidth: innerWidth, alignment: .leading)
         .contentShape(Rectangle())
@@ -555,32 +537,6 @@ struct SpaceView: View {
             .contentShape(Rectangle())
             .conditionalWindowDrag()
             .frame(height: 100)
-    }
-
-    private func splitTabsView(currentTabs: [Tab], leftIdx: Int, rightIdx: Int) -> some View {
-        let firstIdx = min(leftIdx, rightIdx)
-        let secondIdx = max(leftIdx, rightIdx)
-
-        return ForEach(Array(currentTabs.enumerated()), id: \.element.id) { pair in
-            let (idx, tab) = pair
-            if idx == firstIdx {
-                let left = currentTabs[leftIdx]
-                let right = currentTabs[rightIdx]
-
-                SplitTabRow(
-                    left: left,
-                    right: right,
-                    spaceId: space.id,
-                    onActivate: onActivateTab,
-                    onClose: onCloseTab
-                )
-                .environmentObject(browserManager)
-            } else if idx == secondIdx {
-                EmptyView()
-            } else {
-                regularTabView(tab, index: idx)
-            }
-        }
     }
 
     private func regularTabsView(currentTabs: [Tab]) -> some View {
@@ -648,8 +604,6 @@ struct SpaceView: View {
 
     private func regularTabContextMenu(_ tab: Tab) -> some View {
         VStack {
-            Button { browserManager.splitManager.enterSplit(with: tab, placeOn: .right, in: windowState) } label: { Label("Open in Split (Right)", systemImage: "rectangle.split.2x1") }
-            Button { browserManager.splitManager.enterSplit(with: tab, placeOn: .left, in: windowState) } label: { Label("Open in Split (Left)", systemImage: "rectangle.split.2x1") }
             if tab.parentTabId != nil {
                 Divider()
                 Button { browserManager.tabManager.promoteSubtabToRegular(tab.id) } label: { Label("Promote to Tab", systemImage: "decrease.indent") }

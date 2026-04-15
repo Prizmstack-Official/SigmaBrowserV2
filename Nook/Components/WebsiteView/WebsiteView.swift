@@ -166,13 +166,9 @@ struct LinkStatusBar: View {
 struct WebsiteView: View {
     @EnvironmentObject var browserManager: BrowserManager
     @Environment(BrowserWindowState.self) private var windowState
-    @EnvironmentObject var splitManager: SplitViewManager
     @Environment(\.nookSettings) var nookSettings
     @State private var hoveredLink: String?
     @State private var isCommandPressed: Bool = false
-    @State private var isDropTargeted: Bool = false
-    
-    private let dragCoordinateSpace = "splitPreview"
 
     private var cornerRadius: CGFloat {
         LexonTheme.controlCornerRadius
@@ -186,19 +182,14 @@ struct WebsiteView: View {
         ZStack() {
             Group {
                 if browserManager.currentTab(for: windowState) != nil {
-                    GeometryReader { proxy in
+                    GeometryReader { _ in
                         TabCompositorWrapper(
                             browserManager: browserManager,
                             hoveredLink: $hoveredLink,
                             isCommandPressed: $isCommandPressed,
-                            splitFraction: splitManager.dividerFraction(for: windowState.id),
-                            isSplit: splitManager.isSplit(for: windowState.id),
-                            leftId: splitManager.leftTabId(for: windowState.id),
-                            rightId: splitManager.rightTabId(for: windowState.id),
                             windowState: windowState
                         )
-                        .coordinateSpace(name: dragCoordinateSpace)
-                        .background(shouldShowSplit ? Color.clear : Color(nsColor: .windowBackgroundColor))
+                        .background(Color(nsColor: .windowBackgroundColor))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipShape(webViewClipShape)
                         .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 0)
@@ -241,180 +232,9 @@ struct WebsiteView: View {
                 }
                 
             }
-            
-            // Split preview overlay - shows cards during drag operations
-            if splitManager.getSplitState(for: windowState.id).isPreviewActive {
-                SplitPreviewOverlay()
-                    .environmentObject(splitManager)
-                    .environmentObject(browserManager)
-                    .environment(windowState)
-                    .coordinateSpace(name: dragCoordinateSpace)
-                    .animation(
-                        .spring(response: 0.3, dampingFraction: 0.6, blendDuration: 0.2),
-                        value: splitManager.getSplitState(for: windowState.id).isPreviewActive
-                    )
-            }
-            
         }
     }
 
-}
-
-// MARK: - Split Preview Overlay
-private struct SplitPreviewOverlay: View {
-    @EnvironmentObject var splitManager: SplitViewManager
-    @EnvironmentObject var browserManager: BrowserManager
-    @Environment(BrowserWindowState.self) private var windowState
-    
-    var body: some View {
-        GeometryReader { geometry in
-            let splitState = splitManager.getSplitState(for: windowState.id)
-            let previewSide = splitState.previewSide
-            let dragLocation = splitState.dragLocation
-            let cardPadding: CGFloat = 20
-            let cardWidth: CGFloat = 315
-            let cardHeight: CGFloat = 522
-            
-            HStack(spacing: 0) {
-                // Left card - vertically centered with magnetic effect
-                VStack {
-                    Spacer()
-                    MagneticCardView(
-                        side: .left,
-                        icon: "rectangle.lefthalf.filled",
-                        text: "Add left split",
-                        isTabHovered: previewSide == .left,
-                        dragLocation: dragLocation,
-                        cardFrame: CGRect(
-                            x: cardPadding,
-                            y: (geometry.size.height - cardHeight) / 2,
-                            width: cardWidth,
-                            height: cardHeight
-                        ),
-                        geometry: geometry,
-                        accentColor: browserManager.gradientColorManager.displayGradient.primaryColor
-                    )
-                    Spacer()
-                }
-                .padding(.leading, cardPadding)
-                
-                Spacer()
-                
-                // Right card - vertically centered with magnetic effect
-                VStack {
-                    Spacer()
-                    MagneticCardView(
-                        side: .right,
-                        icon: "rectangle.righthalf.filled",
-                        text: "Add right split",
-                        isTabHovered: previewSide == .right,
-                        dragLocation: dragLocation,
-                        cardFrame: CGRect(
-                            x: geometry.size.width - cardPadding - cardWidth,
-                            y: (geometry.size.height - cardHeight) / 2,
-                            width: cardWidth,
-                            height: cardHeight
-                        ),
-                        geometry: geometry,
-                        accentColor: browserManager.gradientColorManager.displayGradient.primaryColor
-                    )
-                    Spacer()
-                }
-                .padding(.trailing, cardPadding)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .allowsHitTesting(false) // Don't intercept mouse events - let drag handling work
-        }
-    }
-}
-
-// MARK: - Magnetic Card View
-private struct MagneticCardView: View {
-    let side: SplitViewManager.Side
-    let icon: String
-    let text: String
-    let isTabHovered: Bool
-    let dragLocation: CGPoint?
-    let cardFrame: CGRect
-    let geometry: GeometryProxy
-    let accentColor: Color
-    
-    @EnvironmentObject var splitManager: SplitViewManager
-    @Environment(BrowserWindowState.self) private var windowState
-    
-    @State private var offset: CGSize = .zero
-    @State private var isMagneticallyActive: Bool = false
-    
-    // Computed property: card is hovered if previewSide matches OR if magnetically active
-    private var cardIsHovered: Bool {
-        let splitState = splitManager.getSplitState(for: windowState.id)
-        return splitState.previewSide == side || isMagneticallyActive
-    }
-    
-    var body: some View {
-        SplitCardView(
-            icon: icon,
-            text: text,
-            isTabHovered: cardIsHovered,
-            accentColor: accentColor
-        )
-        .offset(offset)
-        .scaleEffect(1.0) // Cards appear at full size
-        .animation(
-            dragLocation != nil ? .interactiveSpring(response: 0.3, dampingFraction: 0.7) : .spring(response: 0.4, dampingFraction: 0.6),
-            value: offset
-        )
-        .transition(.asymmetric(
-            insertion: .scale(scale: 0.7, anchor: .center),
-            removal: .scale(scale: 0.5, anchor: .center).combined(with: .opacity)
-        ))
-        .onChange(of: dragLocation) { _, location in
-            guard let location = location else {
-                if isMagneticallyActive {
-                    isMagneticallyActive = false
-                    offset = .zero
-                    // Clear preview side when drag ends
-                    splitManager.updatePreviewSide(nil, for: windowState.id)
-                    NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
-                }
-                return
-            }
-            
-            // dragLocation is in NSView coordinates (relative to container view, bottom-left origin)
-            // cardFrame is in GeometryReader coordinates (top-left origin)
-            // Convert NSView Y coordinate to SwiftUI coordinate space
-            let geometryHeight = geometry.size.height
-            let convertedLocation = CGPoint(x: location.x, y: geometryHeight - location.y)
-            
-            let cardCenter = CGPoint(x: cardFrame.midX, y: cardFrame.midY)
-            
-            // Check if drag is within card bounds (with some margin for magnetic effect)
-            let margin: CGFloat = 50
-            let expandedFrame = cardFrame.insetBy(dx: -margin, dy: -margin)
-            
-            if expandedFrame.contains(convertedLocation) {
-                // Calculate magnetic offset (45% of distance to center)
-                let dx = (convertedLocation.x - cardCenter.x) * 0.45
-                let dy = (convertedLocation.y - cardCenter.y) * 0.45
-                offset = CGSize(width: dx, height: dy)
-                
-                if !isMagneticallyActive {
-                    isMagneticallyActive = true
-                    // Update preview side to indicate this card is hovered
-                    splitManager.updatePreviewSide(side, for: windowState.id)
-                    NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
-                }
-            } else {
-                if isMagneticallyActive {
-                    isMagneticallyActive = false
-                    offset = .zero
-                    // Clear preview side when leaving card
-                    splitManager.updatePreviewSide(nil, for: windowState.id)
-                    NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
-                }
-            }
-        }
-    }
 }
 
 // MARK: - Tab Compositor Wrapper
@@ -422,20 +242,12 @@ struct TabCompositorWrapper: NSViewRepresentable {
     let browserManager: BrowserManager
     @Binding var hoveredLink: String?
     @Binding var isCommandPressed: Bool
-    var splitFraction: CGFloat
-    var isSplit: Bool
-    var leftId: UUID?
-    var rightId: UUID?
     let windowState: BrowserWindowState
 
     class Coordinator {
         weak var browserManager: BrowserManager?
         let windowState: BrowserWindowState
-        var lastIsSplit: Bool = false
-        var lastLeftId: UUID? = nil
-        var lastRightId: UUID? = nil
         var lastCurrentId: UUID? = nil
-        var lastFraction: CGFloat = -1
         var lastSize: CGSize = .zero
         var lastVersion: Int = -1
         var frameObserver: NSObjectProtocol? = nil
@@ -460,14 +272,6 @@ struct TabCompositorWrapper: NSViewRepresentable {
 
         // Store reference to container view in WebViewCoordinator
         browserManager.webViewCoordinator?.setCompositorContainerView(containerView, for: windowState.id)
-        
-        // Install AppKit drag-capture overlay above all webviews
-        let overlay = SplitDropCaptureView(frame: containerView.bounds)
-        overlay.autoresizingMask = [NSView.AutoresizingMask.width, NSView.AutoresizingMask.height]
-        overlay.browserManager = browserManager
-        overlay.splitManager = browserManager.splitManager
-        overlay.layer?.zPosition = 10_000
-        containerView.addSubview(overlay)
 
         // Observe size changes to recompute pane layout when available width changes
         let coord = context.coordinator
@@ -498,22 +302,14 @@ struct TabCompositorWrapper: NSViewRepresentable {
         let currentId = browserManager.currentTab(for: windowState)?.id
         let compositorVersion = windowState.compositorVersion
         let needsRebuild =
-            context.coordinator.lastIsSplit != isSplit ||
-            context.coordinator.lastLeftId != leftId ||
-            context.coordinator.lastRightId != rightId ||
             context.coordinator.lastCurrentId != currentId ||
-            abs(CGFloat(context.coordinator.lastFraction) - CGFloat(splitFraction)) > 0.0001 ||
             context.coordinator.lastSize != size ||
             context.coordinator.lastVersion != compositorVersion
 
         if needsRebuild {
             let previousCurrentId = context.coordinator.lastCurrentId
             updateCompositor(nsView)
-            context.coordinator.lastIsSplit = isSplit
-            context.coordinator.lastLeftId = leftId
-            context.coordinator.lastRightId = rightId
             context.coordinator.lastCurrentId = currentId
-            context.coordinator.lastFraction = splitFraction
             context.coordinator.lastSize = size
             context.coordinator.lastVersion = compositorVersion
 
@@ -522,12 +318,10 @@ struct TabCompositorWrapper: NSViewRepresentable {
                 DispatchQueue.main.async {
                     guard let window = nsView.window else { return }
                     for subview in nsView.subviews.reversed() {
-                        if subview is SplitDropCaptureView { continue }
                         if let webView = subview as? WKWebView, !webView.isHidden {
                             window.makeFirstResponder(webView)
                             return
                         }
-                        // Check pane containers (split view)
                         for child in subview.subviews {
                             if let webView = child as? WKWebView, !child.isHidden {
                                 window.makeFirstResponder(webView)
@@ -552,223 +346,29 @@ struct TabCompositorWrapper: NSViewRepresentable {
 
     private func updateCompositor(_ containerView: NSView) {
         print("🔍 [MEMDEBUG] updateCompositor() CALLED - Window: \(windowState.id.uuidString.prefix(8)), Size: \(containerView.bounds.size)")
-        
-        // Remove all existing webview subviews
-        // Preserve the last overlay subview if present, then re-add
-        let overlay = containerView.subviews.compactMap { $0 as? SplitDropCaptureView }.first
         let existingSubviews = containerView.subviews.count
         print("🔍 [MEMDEBUG]   Removing \(existingSubviews) existing subviews")
         containerView.subviews.forEach { $0.removeFromSuperview() }
-        
-        // Add tabs that should be displayed in this window. If split view is active, show two panes;
-        // otherwise show only the current tab.
+
         let allTabs = browserManager.tabsForDisplay(in: windowState)
         print("🔍 [MEMDEBUG]   Processing \(allTabs.count) tabs for display")
         for tab in allTabs {
             print("🔍 [MEMDEBUG]     Tab: \(tab.id.uuidString.prefix(8)), Name: \(tab.name), isUnloaded: \(tab.isUnloaded)")
         }
-        
-        let split = browserManager.splitManager
-        let splitState = split.getSplitState(for: windowState.id)
-        
-        // Skip rendering split panes during preview - show only the current tab at full size
-        if splitState.isPreviewActive {
-            // During preview, show only the current tab at full size
-            let currentId = browserManager.currentTab(for: windowState)?.id
-            for tab in allTabs {
-                if !tab.isUnloaded {
-                    let webView = webView(for: tab, windowId: windowState.id)
-                    webView.frame = containerView.bounds
-                    webView.autoresizingMask = [NSView.AutoresizingMask.width, NSView.AutoresizingMask.height]
-                    containerView.addSubview(webView)
-                    webView.isHidden = tab.id != currentId
-                }
-            }
-        } else {
-            // Normal split view rendering (when not in preview)
-            let currentId = browserManager.currentTab(for: windowState)?.id
-            let leftId = split.leftTabId(for: windowState.id)
-            let rightId = split.rightTabId(for: windowState.id)
-            let isCurrentPane = (currentId != nil) && (currentId == leftId || currentId == rightId)
-            if split.isSplit(for: windowState.id) && isCurrentPane {
-                // Auto-heal if one side is missing (tab closed etc.)
-                let leftResolved = split.resolveTab(leftId)
-                let rightResolved = split.resolveTab(rightId)
-                if leftResolved == nil && rightResolved == nil {
-                    browserManager.splitManager.exitSplit(keep: .left, for: windowState.id)
-                } else if leftResolved == nil, let _ = rightResolved {
-                    browserManager.splitManager.exitSplit(keep: .right, for: windowState.id)
-                } else if rightResolved == nil, let _ = leftResolved {
-                    browserManager.splitManager.exitSplit(keep: .left, for: windowState.id)
-                }
 
-                // Compute pane rects with a visible gap
-                let gap: CGFloat = 8
-                let fraction = max(split.minFraction, min(split.maxFraction, split.dividerFraction(for: windowState.id)))
-                let total = containerView.bounds
-                let leftWidthRaw = floor(total.width * fraction)
-                let rightWidthRaw = max(0, total.width - leftWidthRaw)
-                let leftRect = NSRect(x: total.minX,
-                                      y: total.minY,
-                                      width: max(1, leftWidthRaw - gap/2),
-                                      height: total.height)
-                let rightRect = NSRect(x: total.minX + leftWidthRaw + gap/2,
-                                       y: total.minY,
-                                       width: max(1, rightWidthRaw - gap/2),
-                                       height: total.height)
-
-                let leftId = split.leftTabId(for: windowState.id)
-                let rightId = split.rightTabId(for: windowState.id)
-
-                // Add pane containers with rounded corners and background
-                let activeSide = split.activeSide(for: windowState.id)
-                let accent = browserManager.gradientColorManager.displayGradient.primaryNSColor
-                // Resolve pane tabs across ALL tabs (not just current space)
-                let allKnownTabs = browserManager.tabManager.allTabs()
-
-                if let lId = leftId, let leftTab = allKnownTabs.first(where: { $0.id == lId }) {
-                    // Force-create/ensure loaded when visible in split
-                    let lWeb = webView(for: leftTab, windowId: windowState.id)
-                    let pane = makePaneContainer(frame: leftRect, isActive: (activeSide == .left), accent: accent, side: .left)
-                    containerView.addSubview(pane)
-                    lWeb.frame = pane.bounds
-                    lWeb.autoresizingMask = [NSView.AutoresizingMask.width, NSView.AutoresizingMask.height]
-                    lWeb.isHidden = false
-                    pane.addSubview(lWeb)
-                    
-                }
-
-                if let rId = rightId, let rightTab = allKnownTabs.first(where: { $0.id == rId }) {
-                    // Force-create/ensure loaded when visible in split
-                    let rWeb = webView(for: rightTab, windowId: windowState.id)
-                    let pane = makePaneContainer(frame: rightRect, isActive: (activeSide == .right), accent: accent, side: .right)
-                    containerView.addSubview(pane)
-                    rWeb.frame = pane.bounds
-                    rWeb.autoresizingMask = [NSView.AutoresizingMask.width, NSView.AutoresizingMask.height]
-                    rWeb.isHidden = false
-                    pane.addSubview(rWeb)
-                    
-                }
-            } else {
-                // Not in split view - show only current tab
-                for tab in allTabs {
-                    // Only add tabs that are still in the tab manager (not closed)
-                    if !tab.isUnloaded {
-                        let webView = webView(for: tab, windowId: windowState.id)
-                        webView.frame = containerView.bounds
-                        webView.autoresizingMask = [NSView.AutoresizingMask.width, NSView.AutoresizingMask.height]
-                        containerView.addSubview(webView)
-                        webView.isHidden = tab.id != browserManager.currentTab(for: windowState)?.id
-                    }
-                }
-            }
+        let currentId = browserManager.currentTab(for: windowState)?.id
+        for tab in allTabs where !tab.isUnloaded {
+            let webView = webView(for: tab, windowId: windowState.id)
+            webView.frame = containerView.bounds
+            webView.autoresizingMask = [NSView.AutoresizingMask.width, NSView.AutoresizingMask.height]
+            containerView.addSubview(webView)
+            webView.isHidden = tab.id != currentId
         }
 
-  
-        // Re-add overlay on top
-        if let overlay = overlay {
-            overlay.frame = containerView.bounds
-            overlay.autoresizingMask = [NSView.AutoresizingMask.width, NSView.AutoresizingMask.height]
-            containerView.addSubview(overlay)
-            overlay.layer?.zPosition = 10_000
-            overlay.browserManager = browserManager
-            overlay.splitManager = browserManager.splitManager
-            overlay.windowId = windowState.id
-        } else {
-            let newOverlay = SplitDropCaptureView(frame: containerView.bounds)
-            newOverlay.autoresizingMask = [NSView.AutoresizingMask.width, NSView.AutoresizingMask.height]
-            newOverlay.browserManager = browserManager
-            newOverlay.splitManager = browserManager.splitManager
-            newOverlay.windowId = windowState.id
-            newOverlay.layer?.zPosition = 10_000
-            containerView.addSubview(newOverlay)
-        }
-        
         // Log final state
         let webViewCount = containerView.subviews.filter { $0 is WKWebView }.count
         let totalSubviews = containerView.subviews.count
         print("🔍 [MEMDEBUG] updateCompositor() COMPLETE - Window: \(windowState.id.uuidString.prefix(8)), WebViews in container: \(webViewCount), Total subviews: \(totalSubviews)")
-    }
-
-    private func makePaneContainer(frame: NSRect, isActive: Bool, accent: NSColor, side: SplitViewManager.Side) -> NSView {
-        let cornerRadius = LexonTheme.chromeCornerRadius
-        
-        let v = NSView(frame: frame)
-        v.wantsLayer = true
-        
-        if let layer = v.layer {
-            layer.backgroundColor = NSColor.windowBackgroundColor.cgColor
-            
-            // Create mask layer for uneven rounded corners
-            let maskLayer = CAShapeLayer()
-            let maskPath = createUnevenRoundedRectPath(
-                rect: v.bounds,
-                topLeadingRadius: side == .left ? 0 : cornerRadius,
-                bottomLeadingRadius: cornerRadius,
-                bottomTrailingRadius: cornerRadius,
-                topTrailingRadius: side == .right ? 0 : cornerRadius
-            )
-            maskLayer.path = maskPath
-            layer.mask = maskLayer
-            
-            // Add border layer
-            if isActive {
-                let borderLayer = CAShapeLayer()
-                borderLayer.path = maskPath
-                borderLayer.strokeColor = accent.withAlphaComponent(0.9).cgColor
-                borderLayer.fillColor = NSColor.clear.cgColor
-                borderLayer.lineWidth = 1.0
-                layer.addSublayer(borderLayer)
-            }
-        }
-        
-        v.autoresizingMask = [.width, .height]
-        return v
-    }
-
-    private func createUnevenRoundedRectPath(
-        rect: CGRect,
-        topLeadingRadius: CGFloat,
-        bottomLeadingRadius: CGFloat,
-        bottomTrailingRadius: CGFloat,
-        topTrailingRadius: CGFloat
-    ) -> CGPath {
-        let path = CGMutablePath()
-        
-        let minX = rect.minX
-        let minY = rect.minY
-        let maxX = rect.maxX
-        let maxY = rect.maxY
-        
-        // Start from top-left, move clockwise
-        path.move(to: CGPoint(x: minX + topLeadingRadius, y: maxY))
-        
-        // Top edge to top-right corner
-        path.addLine(to: CGPoint(x: maxX - topTrailingRadius, y: maxY))
-        if topTrailingRadius > 0 {
-            path.addArc(tangent1End: CGPoint(x: maxX, y: maxY), tangent2End: CGPoint(x: maxX, y: maxY - topTrailingRadius), radius: topTrailingRadius)
-        }
-        
-        // Right edge to bottom-right corner
-        path.addLine(to: CGPoint(x: maxX, y: minY + bottomTrailingRadius))
-        if bottomTrailingRadius > 0 {
-            path.addArc(tangent1End: CGPoint(x: maxX, y: minY), tangent2End: CGPoint(x: maxX - bottomTrailingRadius, y: minY), radius: bottomTrailingRadius)
-        }
-        
-        // Bottom edge to bottom-left corner
-        path.addLine(to: CGPoint(x: minX + bottomLeadingRadius, y: minY))
-        if bottomLeadingRadius > 0 {
-            path.addArc(tangent1End: CGPoint(x: minX, y: minY), tangent2End: CGPoint(x: minX, y: minY + bottomLeadingRadius), radius: bottomLeadingRadius)
-        }
-        
-        // Left edge to top-left corner
-        path.addLine(to: CGPoint(x: minX, y: maxY - topLeadingRadius))
-        if topLeadingRadius > 0 {
-            path.addArc(tangent1End: CGPoint(x: minX, y: maxY), tangent2End: CGPoint(x: minX + topLeadingRadius, y: maxY), radius: topLeadingRadius)
-        }
-        
-        path.closeSubpath()
-        return path
     }
 
     private func setupHoverCallbacks(for tab: Tab) {
@@ -808,16 +408,6 @@ struct TabCompositorWrapper: NSViewRepresentable {
     }
 
 
-}
-
-// MARK: - WebsiteView Extensions
-
-private extension WebsiteView {
-    var shouldShowSplit: Bool {
-        guard splitManager.isSplit(for: windowState.id) else { return false }
-        guard let current = browserManager.currentTab(for: windowState)?.id else { return false }
-        return current == splitManager.leftTabId(for: windowState.id) || current == splitManager.rightTabId(for: windowState.id)
-    }
 }
 
 // MARK: - Container View that forwards right-clicks to webviews
@@ -879,94 +469,3 @@ private class ContainerView: NSView {
     }
 }
 
-// Split view context menu is handled via buttons in SplitControlsOverlay
-// We don't use SwiftUI's contextMenu modifier because it intercepts all right-clicks
-// and prevents WKWebView's willOpenMenu from being called
-
-// MARK: - Split Controls Overlay
-private struct SplitControlsOverlay: View {
-    @EnvironmentObject var browserManager: BrowserManager
-    @EnvironmentObject var splitManager: SplitViewManager
-    @Environment(BrowserWindowState.self) private var windowState
-
-    @State private var dragOffset: CGFloat = 0
-
-    var body: some View {
-        GeometryReader { geo in
-            let totalWidth = geo.size.width
-            let totalHeight = geo.size.height
-
-            let x = CGFloat(splitManager.dividerFraction(for: windowState.id)) * max(totalWidth, 1)
-            // Divider bar
-            ZStack {
-                // Close buttons (small, top corners)
-                HStack {
-                    Button(action: { closeSide(.left) }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .padding(6)
-                    }
-                    .buttonStyle(.plain)
-                    .background(.ultraThinMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.25), lineWidth: 1))
-                    .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
-                    .padding(.leading, 8)
-
-                    Spacer()
-
-                    Button(action: { closeSide(.right) }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .padding(6)
-                    }
-                    .buttonStyle(.plain)
-                    .background(.ultraThinMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.25), lineWidth: 1))
-                    .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
-                    .padding(.trailing, 8)
-                }
-                .padding(.top, 8)
-
-                // Gap visuals and drag handle
-                let gap: CGFloat = 8
-                // Thin grey indicator line to suggest adjustability
-                Rectangle()
-                    .fill(Color(nsColor: .separatorColor).opacity(0.7))
-                    .frame(width: 1, height: totalHeight)
-                    .position(x: x, y: totalHeight / 2)
-                    .allowsHitTesting(false)
-                // Invisible drag handle centered in the gap between panes
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.clear)
-                    .contentShape(Rectangle())
-                    .frame(width: gap, height: totalHeight)
-                    .position(x: x, y: totalHeight / 2)
-                    .onHover { hovering in
-                        if hovering { NSCursor.resizeLeftRight.set() } else { NSCursor.arrow.set() }
-                    }
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { value in
-                                let width = max(totalWidth, 1)
-                                let newX = min(max(value.location.x, splitManager.minFraction * width), splitManager.maxFraction * width)
-                                splitManager.setDividerFraction(newX / width, for: windowState.id)
-                            }
-                    )
-                    .zIndex(1000)
-            }
-        }
-        .allowsHitTesting(true)
-    }
-
-    private func closeSide(_ side: SplitViewManager.Side) {
-        let id: UUID? = (side == .left) ? splitManager.leftTabId(for: windowState.id) : splitManager.rightTabId(for: windowState.id)
-        if let id = id {
-            browserManager.tabManager.removeTab(id)
-        } else {
-            // Fallback: just exit split
-            splitManager.exitSplit(keep: side == .left ? .right : .left, for: windowState.id)
-        }
-    }
-}

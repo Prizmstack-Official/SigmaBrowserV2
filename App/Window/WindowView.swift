@@ -139,7 +139,6 @@ struct WindowView: View {
         }
         .environmentObject(browserManager)
         .environmentObject(browserManager.gradientColorManager)
-        .environmentObject(browserManager.splitManager)
         .environmentObject(hoverSidebarManager)
         .preferredColorScheme(windowState.gradient.primaryColor.isPerceivedDark ? .dark : .light)
     }

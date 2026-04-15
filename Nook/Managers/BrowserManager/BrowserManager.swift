@@ -421,7 +421,6 @@ class BrowserManager: ObservableObject {
     var cacheManager: CacheManager
     var extensionManager: ExtensionManager?
     var compositorManager: TabCompositorManager
-    var splitManager: SplitViewManager
     var gradientColorManager: GradientColorManager
     var trackingProtectionManager: TrackingProtectionManager
     var findManager: FindManager
@@ -662,7 +661,6 @@ class BrowserManager: ObservableObject {
         self.cookieManager = CookieManager(dataStore: initialProfile?.dataStore)
         self.cacheManager = CacheManager(dataStore: initialProfile?.dataStore)
         self.compositorManager = TabCompositorManager()
-        self.splitManager = SplitViewManager()
         self.gradientColorManager = GradientColorManager()
         self.trackingProtectionManager = TrackingProtectionManager()
         self.findManager = FindManager()
@@ -670,8 +668,6 @@ class BrowserManager: ObservableObject {
 
         // Phase 2: wire dependencies and perform side effects (safe to use self)
         self.compositorManager.browserManager = self
-        self.splitManager.browserManager = self
-        self.splitManager.windowRegistry = self.windowRegistry
         // Note: settingsManager will be injected later, so we skip initialization here
         self.tabManager.browserManager = self
         self.tabManager.reattachBrowserManager(self)
@@ -2074,7 +2070,6 @@ class BrowserManager: ObservableObject {
         if !windowState.isIncognito {
             gradientColorManager.setImmediate(windowState.gradient)
         }
-        splitManager.refreshPublishedState(for: windowState.id)
         isCommandPaletteVisible = windowState.isCommandPaletteVisible
         if windowState.currentProfileId == nil {
             windowState.currentProfileId = currentProfile?.id
@@ -2107,9 +2102,6 @@ class BrowserManager: ObservableObject {
     /// Select a tab in a specific window
     func selectTab(_ tab: Tab, in windowState: BrowserWindowState) {
         windowState.currentTabId = tab.id
-
-        // Update active side in split view if applicable
-        splitManager.updateActiveSide(for: tab.id, in: windowState.id)
 
         // Update space if the tab belongs to a different space
         if let spaceId = tab.spaceId, windowState.currentSpaceId != spaceId {

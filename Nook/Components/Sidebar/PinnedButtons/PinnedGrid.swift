@@ -85,9 +85,7 @@ struct PinnedGrid: View {
                                         isActive: isActive,
                                         onActivate: { browserManager.selectTab(tab, in: windowState) },
                                         onClose: { _ = browserManager.tabManager.completeTab(tab.id) },
-                                        onRemovePin: { browserManager.tabManager.unpinTab(tab) },
-                                        onSplitRight: { browserManager.splitManager.enterSplit(with: tab, placeOn: .right, in: windowState) },
-                                        onSplitLeft: { browserManager.splitManager.enterSplit(with: tab, placeOn: .left, in: windowState) }
+                                        onRemovePin: { browserManager.tabManager.unpinTab(tab) }
                                     )
                                     .environmentObject(browserManager)
                                 }
@@ -217,8 +215,6 @@ private struct PinnedTile: View {
     let onActivate: () -> Void
     let onClose: () -> Void
     let onRemovePin: () -> Void
-    let onSplitRight: () -> Void
-    let onSplitLeft: () -> Void
 
     var body: some View {
         PinnedTabView(
@@ -230,13 +226,6 @@ private struct PinnedTile: View {
         )
         .frame(maxWidth: .infinity)
         .contextMenu {
-            Button(action: onSplitRight) {
-                Label("Open in Split (Right)", systemImage: "rectangle.split.2x1")
-            }
-            Button(action: onSplitLeft) {
-                Label("Open in Split (Left)", systemImage: "rectangle.split.2x1")
-            }
-            Divider()
             Button(role: .destructive, action: onClose) {
                 Label("Mark Done", systemImage: "checkmark")
             }

@@ -352,7 +352,6 @@ struct SpacesSideBarView: View {
             .environment(windowState)
             .environment(commandPalette)
             .environmentObject(browserManager.gradientColorManager)
-            .environmentObject(browserManager.splitManager)
             .id(space.id.uuidString + "-w\(Int(windowState.sidebarContentWidth))")
             Spacer()
         }

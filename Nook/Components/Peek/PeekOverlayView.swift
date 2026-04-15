@@ -229,14 +229,6 @@ struct PeekOverlayView: View {
                 color: currentSpaceColor
             )
 
-            // Split view button (disabled if already in split view)
-            actionButton(
-                icon: "square.split.2x1",
-                action: { browserManager.peekManager.moveToSplitView() },
-                color: currentSpaceColor,
-                disabled: !browserManager.peekManager.canEnterSplitView
-            )
-
             // New tab button
             actionButton(
                 icon: "plus.square.on.square",
@@ -301,7 +293,6 @@ struct PeekOverlayView: View {
 
     private func calculateLayout(geometry: GeometryProxy) -> (frame: CGRect, cornerRadius: CGFloat) {
         let windowSize = geometry.size
-        let isSplit = browserManager.splitManager.isSplit(for: windowState.id)
         let sidebarPosition = nookSettings.sidebarPosition
 
         // Compute the visible web content area by excluding the sidebar width
@@ -325,9 +316,6 @@ struct PeekOverlayView: View {
             // Sidebar on right: peek window starts from left edge
             peekX = peekXWithinWebArea
         }
-
-        // If split view, behavior remains the same as single; centering is relative to web area
-        _ = isSplit // currently unused but kept for future adjustments
 
         return (
             frame: CGRect(
