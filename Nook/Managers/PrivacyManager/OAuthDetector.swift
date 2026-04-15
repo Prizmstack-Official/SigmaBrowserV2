@@ -10,6 +10,14 @@ import Foundation
 
 enum OAuthDetector {
 
+    private static let callbackSchemePatternPrefix = "scheme:"
+    private static let callbackQueryParameterNames = [
+        "redirect_uri",
+        "redirect_url",
+        "callback_url",
+        "return_to",
+    ]
+
     // MARK: - Known Provider Hosts
 
     /// Well-known OAuth/OIDC/SSO provider host suffixes.
@@ -182,6 +190,62 @@ enum OAuthDetector {
         return false
     }
 
+    /// Derive a concrete callback target for popup completion.
+    ///
+    /// Prefer a full redirect/callback URL when the auth request declares one.
+    /// If the caller only knows a callback scheme, keep a scheme-only matcher so
+    /// native-app callbacks can still be recognized.
+    static func oauthCompletionPattern(from authURL: URL, explicitCallbackScheme: String? = nil) -> String? {
+        if let redirectURL = inferredRedirectURL(from: authURL) {
+            return redirectURL.absoluteString
+        }
+
+        guard let callbackScheme = sanitizeCallbackScheme(explicitCallbackScheme) else {
+            return nil
+        }
+
+        return callbackSchemePatternPrefix + callbackScheme
+    }
+
+    static func matchesOAuthCompletion(url: URL, pattern: String) -> Bool {
+        if pattern.hasPrefix(callbackSchemePatternPrefix) {
+            let expectedScheme = String(pattern.dropFirst(callbackSchemePatternPrefix.count))
+            return url.scheme?.lowercased() == expectedScheme
+        }
+
+        guard let expectedURL = URL(string: pattern) else {
+            return false
+        }
+
+        return matchesCallbackURL(url, expectedURL: expectedURL)
+    }
+
+    static func inferredRedirectURL(from authURL: URL) -> URL? {
+        guard let components = URLComponents(url: authURL, resolvingAgainstBaseURL: false),
+              let queryItems = components.queryItems else {
+            return nil
+        }
+
+        for parameterName in callbackQueryParameterNames {
+            guard let rawValue = queryItems.first(where: { $0.name.caseInsensitiveCompare(parameterName) == .orderedSame })?.value?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                  rawValue.isEmpty == false else {
+                continue
+            }
+
+            if let redirectURL = URL(string: rawValue) {
+                return redirectURL
+            }
+
+            if let decodedValue = rawValue.removingPercentEncoding,
+               let redirectURL = URL(string: decodedValue) {
+                return redirectURL
+            }
+        }
+
+        return nil
+    }
+
     // MARK: - Helpers (internal for testing)
 
     static func matchesKnownProvider(host: String) -> Bool {
@@ -223,5 +287,57 @@ enum OAuthDetector {
             "access_token=",
         ]
         return params.contains(where: { query.contains($0) })
+    }
+
+    private static func sanitizeCallbackScheme(_ scheme: String?) -> String? {
+        guard let scheme = scheme?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+              scheme.isEmpty == false else {
+            return nil
+        }
+
+        return scheme
+    }
+
+    private static func matchesCallbackURL(_ currentURL: URL, expectedURL: URL) -> Bool {
+        guard var currentComponents = URLComponents(url: currentURL, resolvingAgainstBaseURL: false),
+              var expectedComponents = URLComponents(url: expectedURL, resolvingAgainstBaseURL: false) else {
+            return false
+        }
+
+        currentComponents.scheme = currentComponents.scheme?.lowercased()
+        currentComponents.host = currentComponents.host?.lowercased()
+        expectedComponents.scheme = expectedComponents.scheme?.lowercased()
+        expectedComponents.host = expectedComponents.host?.lowercased()
+
+        guard currentComponents.scheme == expectedComponents.scheme,
+              currentComponents.host == expectedComponents.host,
+              currentComponents.port == expectedComponents.port,
+              normalizedCallbackPath(currentComponents.path) == normalizedCallbackPath(expectedComponents.path) else {
+            return false
+        }
+
+        let expectedQueryItems = expectedComponents.queryItems ?? []
+        guard expectedQueryItems.isEmpty == false else {
+            return true
+        }
+
+        let currentQueryItems = currentComponents.queryItems ?? []
+        return expectedQueryItems.allSatisfy { expectedItem in
+            currentQueryItems.contains {
+                $0.name == expectedItem.name && $0.value == expectedItem.value
+            }
+        }
+    }
+
+    private static func normalizedCallbackPath(_ path: String) -> String {
+        if path.isEmpty {
+            return "/"
+        }
+
+        if path.count > 1, path.hasSuffix("/") {
+            return String(path.dropLast())
+        }
+
+        return path
     }
 }

@@ -103,6 +103,10 @@ final class AuthenticationManager: NSObject {
         )
         authTab.isOAuthFlow = true
         authTab.oauthParentTabId = tab.id
+        authTab.oauthCompletionURLPattern = OAuthDetector.oauthCompletionPattern(
+            from: request.url,
+            explicitCallbackScheme: request.explicitCallbackScheme
+        )
         if let providerHost = request.url.host?.lowercased() {
             authTab.oauthProviderHost = providerHost
             manager.oauthAllowDomain(providerHost)

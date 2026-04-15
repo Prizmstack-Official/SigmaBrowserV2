@@ -36,7 +36,8 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
     var oauthParentTabId: UUID?
     /// The OAuth provider host (e.g., "accounts.google.com") for tracking protection exemption
     var oauthProviderHost: String?
-    /// The URL pattern that indicates OAuth completion (redirect back to original domain)
+    /// The callback target that indicates OAuth completion.
+    /// This can be a concrete redirect URL or a scheme-only matcher.
     var oauthCompletionURLPattern: String?
 
     // MARK: - Pin State
@@ -2637,6 +2638,15 @@ extension Tab: WKNavigationDelegate {
         decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
+        if isOAuthFlow,
+           let url = navigationAction.request.url,
+           matchesOAuthCompletion(url: url),
+           url.scheme?.hasPrefix("http") == false {
+            completeOAuthFlow(for: url)
+            decisionHandler(.cancel)
+            return
+        }
+
         if shouldSuppressCommandClickNavigation(for: navigationAction) {
             decisionHandler(.cancel)
             return
@@ -3132,6 +3142,7 @@ extension Tab: WKUIDelegate {
             }
             newTab.isOAuthFlow = true
             newTab.oauthParentTabId = self.id
+            newTab.oauthCompletionURLPattern = OAuthDetector.oauthCompletionPattern(from: url)
         }
         if let activeWindow = bm.windowRegistry?.activeWindow {
             bm.selectTab(newTab, in: activeWindow)
@@ -3232,6 +3243,7 @@ extension Tab: WKUIDelegate {
         
         let urlString = url.absoluteString.lowercased()
         let host = url.host?.lowercased() ?? ""
+        let matchedExpectedCallback = matchesOAuthCompletion(url: url)
         
         // Check for OAuth success indicators
         let successIndicators = ["code=", "access_token=", "id_token=", "oauth_token=",
@@ -3242,16 +3254,23 @@ extension Tab: WKUIDelegate {
         
         let isSuccess = successIndicators.contains { urlString.contains($0) }
         let isError = errorIndicators.contains { urlString.contains($0) }
+        let resolvedSuccess = (matchedExpectedCallback && !isError) || isSuccess
+        let shouldFallbackComplete =
+            matchedExpectedCallback == false &&
+            oauthCompletionURLPattern == nil &&
+            {
+                guard let providerHost = oauthProviderHost else { return false }
+                return !host.contains(providerHost) &&
+                    (isSuccess || isError || !OAuthDetector.isLikelyOAuthURL(url))
+            }()
         
-        // Check if this is a redirect back to the original domain (not the OAuth provider)
-        if let providerHost = oauthProviderHost, !host.contains(providerHost),
-           (isSuccess || isError || !OAuthDetector.isLikelyOAuthURL(url)) {
+        if matchedExpectedCallback || shouldFallbackComplete {
             
-            print("🔐 [Tab] OAuth flow completed: success=\(isSuccess), closing OAuth tab")
+            print("🔐 [Tab] OAuth flow completed: success=\(resolvedSuccess), closing OAuth tab")
 
             bm.authenticationManager.handleIdentityFlowTabCompletion(
                 self.id,
-                success: isSuccess,
+                success: resolvedSuccess,
                 finalURL: url
             )
             
@@ -3261,7 +3280,7 @@ extension Tab: WKUIDelegate {
                     // Switch to parent tab
                     bm?.tabManager.setActiveTab(parentTab)
                     // Reload parent tab to pick up authenticated state after successful auth.
-                    if isSuccess {
+                    if resolvedSuccess {
                         parentTab.activeWebView.reload()
                     }
                 }
@@ -3274,6 +3293,18 @@ extension Tab: WKUIDelegate {
                 bm.tabManager.removeTab(self.id)
             }
         }
+    }
+
+    private func completeOAuthFlow(for url: URL) {
+        checkOAuthCompletion(url: url)
+    }
+
+    private func matchesOAuthCompletion(url: URL) -> Bool {
+        guard let pattern = oauthCompletionURLPattern else {
+            return false
+        }
+
+        return OAuthDetector.matchesOAuthCompletion(url: url, pattern: pattern)
     }
     
     public func webView(
