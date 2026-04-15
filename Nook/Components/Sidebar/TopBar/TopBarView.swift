@@ -36,7 +36,7 @@ struct TopBarView: View {
             }
         }()
 
-        let currentTab = browserManager.currentTab(for: windowState)
+        let currentTab = tabWrapper.tab
         let hasPiPControl =
             currentTab?.hasVideoContent == true
             || browserManager.currentTabHasPiPActive()
@@ -252,7 +252,7 @@ struct TopBarView: View {
     }
 
     private var urlBar: some View {
-        let currentTab = browserManager.currentTab(for: windowState)
+        let currentTab = tabWrapper.tab
 
         return HStack(spacing: 8) {
             Spacer(minLength: 0)
@@ -271,11 +271,19 @@ struct TopBarView: View {
         .padding(.horizontal, 12)
         .frame(height: TopBarMetrics.controlSize)
         .overlay {
-            CenteredURLBarLabel(
-                tab: currentTab,
-                placeholderText: "Search or ask a question...",
-                textColor: urlBarTextColor
-            )
+            Group {
+                if let currentTab {
+                    CenteredURLBarLabel(
+                        tab: currentTab,
+                        textColor: urlBarTextColor
+                    )
+                } else {
+                    CenteredURLBarPlaceholderLabel(
+                        placeholderText: "Search or ask a question...",
+                        textColor: urlBarTextColor
+                    )
+                }
+            }
             // Reserve space for the trailing controls so the label stays visually centered.
             .padding(.horizontal, currentTab == nil ? 16 : 72)
             .allowsHitTesting(false)
@@ -418,13 +426,12 @@ struct TopBarView: View {
 }
 
 private struct CenteredURLBarLabel: View {
-    let tab: Tab?
-    let placeholderText: String
+    @ObservedObject var tab: Tab
     let textColor: Color
 
     var body: some View {
         HStack(spacing: 8) {
-            icon
+            favicon
 
             Text(displayText)
                 .font(.system(size: 13, weight: .medium, design: .default))
@@ -436,24 +443,16 @@ private struct CenteredURLBarLabel: View {
         .frame(maxWidth: .infinity, alignment: .center)
     }
 
-    @ViewBuilder
-    private var icon: some View {
-        if let tab {
-            tab.favicon
-                .resizable()
-                .scaledToFit()
-                .frame(width: 14, height: 14)
-                .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
-        } else {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(textColor.opacity(0.8))
-        }
+    private var favicon: some View {
+        tab.favicon
+            .resizable()
+            .scaledToFit()
+            .frame(width: 14, height: 14)
+            .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
     }
 
     private var displayText: String {
-        guard let tab else { return placeholderText }
-        return formatDisplayText(for: tab)
+        formatDisplayText(for: tab)
     }
 
     private func formatDisplayText(for tab: Tab) -> String {
@@ -516,6 +515,31 @@ private struct CenteredURLBarLabel: View {
         value
             .lowercased()
             .filter { $0.isLetter || $0.isNumber }
+    }
+}
+
+private struct CenteredURLBarPlaceholderLabel: View {
+    let placeholderText: String
+    let textColor: Color
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(textColor.opacity(0.8))
+
+            Text(displayText)
+                .font(.system(size: 13, weight: .medium, design: .default))
+                .foregroundStyle(textColor)
+                .tracking(-0.1)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private var displayText: String {
+        placeholderText
     }
 }
 

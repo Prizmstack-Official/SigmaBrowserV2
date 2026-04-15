@@ -3242,7 +3242,6 @@ extension Tab: WKUIDelegate {
               let bm = browserManager else { return }
         
         let urlString = url.absoluteString.lowercased()
-        let host = url.host?.lowercased() ?? ""
         let matchedExpectedCallback = matchesOAuthCompletion(url: url)
         
         // Check for OAuth success indicators
@@ -3255,43 +3254,42 @@ extension Tab: WKUIDelegate {
         let isSuccess = successIndicators.contains { urlString.contains($0) }
         let isError = errorIndicators.contains { urlString.contains($0) }
         let resolvedSuccess = (matchedExpectedCallback && !isError) || isSuccess
-        let shouldFallbackComplete =
-            matchedExpectedCallback == false &&
-            oauthCompletionURLPattern == nil &&
-            {
-                guard let providerHost = oauthProviderHost else { return false }
-                return !host.contains(providerHost) &&
-                    (isSuccess || isError || !OAuthDetector.isLikelyOAuthURL(url))
-            }()
         
-        if matchedExpectedCallback || shouldFallbackComplete {
-            
-            print("🔐 [Tab] OAuth flow completed: success=\(resolvedSuccess), closing OAuth tab")
+        // Only close OAuth tabs when we have reached the verified callback URL.
+        // Host-based fallback detection was closing Google and other IdP popups
+        // during legitimate intermediate redirects before the real callback.
+        guard matchedExpectedCallback else {
+            if oauthCompletionURLPattern == nil, isSuccess || isError {
+                print("⚠️ [Tab] Ignoring OAuth completion without verified callback: \(url.absoluteString)")
+            }
+            return
+        }
 
-            bm.authenticationManager.handleIdentityFlowTabCompletion(
-                self.id,
-                success: resolvedSuccess,
-                finalURL: url
-            )
-            
-            // Find and reload the parent tab
-            if let parentTab = bm.tabManager.allTabs().first(where: { $0.id == parentTabId }) {
-                DispatchQueue.main.async { [weak bm] in
-                    // Switch to parent tab
-                    bm?.tabManager.setActiveTab(parentTab)
-                    // Reload parent tab to pick up authenticated state after successful auth.
-                    if resolvedSuccess {
-                        parentTab.activeWebView.reload()
-                    }
+        print("🔐 [Tab] OAuth flow completed: success=\(resolvedSuccess), closing OAuth tab")
+
+        bm.authenticationManager.handleIdentityFlowTabCompletion(
+            self.id,
+            success: resolvedSuccess,
+            finalURL: url
+        )
+        
+        // Find and reload the parent tab
+        if let parentTab = bm.tabManager.allTabs().first(where: { $0.id == parentTabId }) {
+            DispatchQueue.main.async { [weak bm] in
+                // Switch to parent tab
+                bm?.tabManager.setActiveTab(parentTab)
+                // Reload parent tab to pick up authenticated state after successful auth.
+                if resolvedSuccess {
+                    parentTab.activeWebView.reload()
                 }
             }
-            
-            // Close this OAuth tab
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak bm, weak self] in
-                guard let self = self, let bm = bm else { return }
-                print("🔐 [Tab] Auto-closing OAuth tab: \(self.name)")
-                bm.tabManager.removeTab(self.id)
-            }
+        }
+        
+        // Close this OAuth tab
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak bm, weak self] in
+            guard let self = self, let bm = bm else { return }
+            print("🔐 [Tab] Auto-closing OAuth tab: \(self.name)")
+            bm.tabManager.removeTab(self.id)
         }
     }
 
