@@ -36,7 +36,7 @@ struct SettingsDialog: DialogPresentable {
         DialogHeader(
             icon: "gear",
             title: "Settings",
-            subtitle: "Customize your Lexon Browser experience"
+            subtitle: "Customize your \(Branding.appName) experience"
         )
     }
 

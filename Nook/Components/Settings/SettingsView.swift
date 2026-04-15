@@ -215,8 +215,8 @@ struct GeneralSettingsView: View {
                     }
                     
                     SettingsSectionCard(
-                        title: "Lexon Browser",
-                        subtitle: "General Lexon Browser settings"
+                        title: Branding.appName,
+                        subtitle: "General \(Branding.appName) settings"
                     ) {
                         VStack(alignment: .leading, spacing: 16) {
                             Toggle(
@@ -226,7 +226,7 @@ struct GeneralSettingsView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Ask Before Quitting")
                                     Text(
-                                        "Warn before quitting Lexon Browser"
+                                        "Warn before quitting \(Branding.appName)"
                                     )
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -1070,7 +1070,7 @@ struct ShortcutsSettingsView: View {
                     Text("Detect Website Shortcuts")
                         .font(.subheadline)
                         .fontWeight(.medium)
-                    Text("When a website uses the same shortcut, press once for website, twice for Lexon Browser")
+                    Text("When a website uses the same shortcut, press once for website, twice for \(Branding.appName)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1640,7 +1640,7 @@ struct SettingsHeroCard: View {
             .frame(height: 220)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Lexon Browser")
+                Text(Branding.appName)
                     .font(.system(size: 24, weight: .bold))
                 Text("BROWSER")
                     .font(.caption)

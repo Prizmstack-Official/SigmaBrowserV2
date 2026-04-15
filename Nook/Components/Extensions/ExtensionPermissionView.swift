@@ -37,7 +37,7 @@ struct ExtensionPermissionView: View {
                 
             
             }
-            Text("Add the \"\(extensionName)\"extension to Lexon Browser?")
+            Text("Add the \"\(extensionName)\" extension to \(Branding.appName)?")
                 .font(.system(size: 16, weight: .semibold))
             
             Text("It can:")

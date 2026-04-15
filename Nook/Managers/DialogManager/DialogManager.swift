@@ -52,7 +52,7 @@ class DialogManager {
                 content: {
                     VStack(alignment: .leading, spacing: 20) {
                         LexonBrandMark(size: 26)
-                        Text("Are you sure you want to quit Lexon Browser?")
+                        Text("Are you sure you want to quit \(Branding.appName)?")
                             .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(AppColors.textPrimary)
                         Text("You may lose unsaved work in your tabs.")

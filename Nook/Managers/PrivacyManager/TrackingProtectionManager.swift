@@ -238,6 +238,12 @@ final class TrackingProtectionManager {
         wv.reloadFromOrigin()
     }
 
+    /// Removes tracking protections from a popup before its initial load so
+    /// OAuth providers can complete their opener-based handshakes uninterrupted.
+    func prepareOAuthPopupWebView(_ webView: WKWebView) {
+        removeTracking(from: webView)
+    }
+
     // MARK: - Rules
     private static func makeRuleJSON(blockCookies: Bool = true) -> String {
         // Small built-in list of common tracking hosts and a generic third‑party cookie block.

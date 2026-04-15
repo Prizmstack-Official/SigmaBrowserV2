@@ -28,7 +28,7 @@ struct ImportStage: View {
 
     var body: some View {
         VStack(spacing: 24){
-            Text("Transition to Lexon Browser")
+            Text("Transition to \(Branding.appName)")
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(.white)
             VStack(spacing: 12){

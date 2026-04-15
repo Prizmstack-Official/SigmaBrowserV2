@@ -102,6 +102,7 @@ final class AuthenticationManager: NSObject {
             parentTab: tab
         )
         authTab.isOAuthFlow = true
+        authTab.managesOAuthLifecycle = true
         authTab.oauthParentTabId = tab.id
         authTab.oauthCompletionURLPattern = OAuthDetector.oauthCompletionPattern(
             from: request.url,

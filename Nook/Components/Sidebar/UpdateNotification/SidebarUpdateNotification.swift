@@ -45,7 +45,7 @@ struct SidebarUpdateNotification: View {
         if let availability, shouldShowNotification {
             VStack(spacing: 0) {
                 VStack(spacing: 0) {
-                    Text("New version of Lexon Browser available")
+                    Text("New version of \(Branding.appName) available")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(LexonTheme.primaryText(for: colorScheme))
                         .offset(y: isExpanded ? -25 : 0)

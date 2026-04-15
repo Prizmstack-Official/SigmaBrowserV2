@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "7F8340FB2E37F39400674A5D"
-               BuildableName = "Nook.app"
+               BuildableName = "Noriq.app"
                BlueprintName = "Nook"
                ReferencedContainer = "container:Nook.xcodeproj">
             </BuildableReference>
@@ -58,7 +58,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7F8340FB2E37F39400674A5D"
-            BuildableName = "Nook.app"
+            BuildableName = "Noriq.app"
             BlueprintName = "Nook"
             ReferencedContainer = "container:Nook.xcodeproj">
          </BuildableReference>
@@ -75,7 +75,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7F8340FB2E37F39400674A5D"
-            BuildableName = "Nook.app"
+            BuildableName = "Noriq.app"
             BlueprintName = "Nook"
             ReferencedContainer = "container:Nook.xcodeproj">
          </BuildableReference>
@@ -86,7 +86,7 @@
    </AnalyzeAction>
    <ArchiveAction
       buildConfiguration = "Release"
-      customArchiveName = "Nook Browser"
+      customArchiveName = "Noriq"
       revealArchiveInOrganizer = "YES">
    </ArchiveAction>
 </Scheme>

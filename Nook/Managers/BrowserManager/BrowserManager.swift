@@ -360,6 +360,27 @@ extension BrowserManager.ProfileSwitchContext {
 
 @MainActor
 class BrowserManager: ObservableObject {
+    private final class OAuthPopupWindowDelegate: NSObject, NSWindowDelegate {
+        weak var browserManager: BrowserManager?
+        let tabId: UUID
+        var notifyOnClose: Bool = true
+
+        init(browserManager: BrowserManager, tabId: UUID) {
+            self.browserManager = browserManager
+            self.tabId = tabId
+        }
+
+        func windowWillClose(_ notification: Notification) {
+            guard let browserManager else { return }
+            Task { @MainActor in
+                browserManager.handleStandaloneOAuthPopupWindowClosed(
+                    tabId: self.tabId,
+                    notifyClose: self.notifyOnClose
+                )
+            }
+        }
+    }
+
     // Legacy global state - kept for backward compatibility during transition
     @Published var sidebarWidth: CGFloat = 250
     @Published var sidebarContentWidth: CGFloat = 234
@@ -421,6 +442,10 @@ class BrowserManager: ObservableObject {
         }
     }
 
+    private var standaloneOAuthPopupWindows: [UUID: NSWindow] = [:]
+    private var standaloneOAuthPopupTabs: [UUID: Tab] = [:]
+    private var standaloneOAuthPopupDelegates: [UUID: OAuthPopupWindowDelegate] = [:]
+
     private var savedSidebarWidth: CGFloat = 250
     private let userDefaults = UserDefaults.standard
     var isSwitchingProfile: Bool = false
@@ -478,6 +503,89 @@ class BrowserManager: ObservableObject {
                 }
             }
         }
+    }
+
+    func presentStandaloneOAuthPopupWindow(
+        for tab: Tab,
+        webView: WKWebView,
+        requestedURL: URL?,
+        windowFeatures: WKWindowFeatures,
+        parentWindow: NSWindow?
+    ) {
+        let popupWidth = max(CGFloat(windowFeatures.width?.doubleValue ?? 520), 420)
+        let popupHeight = max(CGFloat(windowFeatures.height?.doubleValue ?? 680), 520)
+
+        var styleMask: NSWindow.StyleMask = [.titled, .closable, .miniaturizable]
+        if windowFeatures.allowsResizing?.boolValue != false {
+            styleMask.insert(.resizable)
+        }
+
+        let popupWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: popupWidth, height: popupHeight),
+            styleMask: styleMask,
+            backing: .buffered,
+            defer: false
+        )
+
+        let host = requestedURL?.host ?? tab.url.host ?? "Auth"
+        popupWindow.title = "Sign In - \(host)"
+        popupWindow.minSize = NSSize(width: 420, height: 520)
+        popupWindow.contentMinSize = popupWindow.minSize
+
+        let containerView = NSView(frame: popupWindow.contentLayoutRect)
+        containerView.autoresizingMask = [.width, .height]
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(webView)
+        NSLayoutConstraint.activate([
+            webView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            webView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            webView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+        ])
+        popupWindow.contentView = containerView
+
+        if let parentWindow {
+            let origin = NSPoint(
+                x: parentWindow.frame.midX - (popupWidth / 2),
+                y: parentWindow.frame.midY - (popupHeight / 2)
+            )
+            popupWindow.setFrameOrigin(origin)
+        } else {
+            popupWindow.center()
+        }
+
+        let delegate = OAuthPopupWindowDelegate(browserManager: self, tabId: tab.id)
+        popupWindow.delegate = delegate
+        standaloneOAuthPopupWindows[tab.id] = popupWindow
+        standaloneOAuthPopupTabs[tab.id] = tab
+        standaloneOAuthPopupDelegates[tab.id] = delegate
+
+        popupWindow.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        print("🔐 [BrowserManager] Presented standalone OAuth popup window for tab: \(tab.id)")
+    }
+
+    @discardableResult
+    func closeStandaloneOAuthPopupWindow(tabId: UUID, notifyClose: Bool = true) -> Bool {
+        guard let popupWindow = standaloneOAuthPopupWindows[tabId] else { return false }
+        standaloneOAuthPopupDelegates[tabId]?.notifyOnClose = notifyClose
+        popupWindow.close()
+        return true
+    }
+
+    private func handleStandaloneOAuthPopupWindowClosed(tabId: UUID, notifyClose: Bool) {
+        let tab = standaloneOAuthPopupTabs.removeValue(forKey: tabId)
+        standaloneOAuthPopupWindows.removeValue(forKey: tabId)
+        standaloneOAuthPopupDelegates.removeValue(forKey: tabId)
+
+        tab?.performComprehensiveWebViewCleanup()
+
+        if notifyClose {
+            authenticationManager.handleIdentityFlowTabClosed(tabId)
+        }
+
+        print("🔐 [BrowserManager] Closed standalone OAuth popup window for tab: \(tabId)")
     }
 
     private func adoptProfileIfNeeded(
@@ -2475,7 +2583,7 @@ class BrowserManager: ObservableObject {
             .environment(\.nookSettings, nookSettings ?? NookSettingsService())
 
         newWindow.contentView = NSHostingView(rootView: contentView)
-        newWindow.title = "Lexon Browser"
+        newWindow.title = Branding.appName
         newWindow.minSize = NSSize(width: 470, height: 382)
         newWindow.contentMinSize = NSSize(width: 470, height: 382)
         newWindow.center()
@@ -2535,7 +2643,7 @@ class BrowserManager: ObservableObject {
             .environment(\.nookSettings, nookSettings ?? NookSettingsService())
 
         newWindow.contentView = NSHostingView(rootView: contentView)
-        newWindow.title = "Incognito - Lexon Browser"
+        newWindow.title = "Incognito - \(Branding.appName)"
         newWindow.minSize = NSSize(width: 470, height: 382)
         newWindow.contentMinSize = NSSize(width: 470, height: 382)
         newWindow.center()

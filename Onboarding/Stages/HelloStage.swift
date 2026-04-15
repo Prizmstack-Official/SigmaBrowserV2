@@ -11,7 +11,7 @@ struct HelloStage: View {
 
     var body: some View {
         VStack(spacing: 24){
-            Text("Say Hi to Lexon Browser")
+            Text("Say Hi to \(Branding.appName)")
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(.white)
             LexonBrandMark(size: 128)

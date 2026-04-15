@@ -14,7 +14,7 @@ struct MemberCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("Lexon Member")
+            Text("\(Branding.appName) Member")
                 .font(.system(size: 24, weight: .semibold, design: .rounded))
             Text("Independent open-source browser")
                 .font(.system(size: 12, weight: .medium))
@@ -24,7 +24,7 @@ struct MemberCard: View {
             Text("Thank you")
                 .font(.system(size: 32, weight: .bold, design: .serif))
                 .italic()
-            Text("For helping build Lexon Browser")
+            Text("For helping build \(Branding.appName)")
                 .font(.system(size: 13, weight: .medium))
             Spacer()
 

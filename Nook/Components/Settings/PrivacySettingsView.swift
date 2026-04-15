@@ -541,13 +541,13 @@ private struct PasskeySettingsSection: View {
     private var statusDescription: String {
         switch passkeyManager.authorizationState {
         case .authorized:
-            return "Lexon Browser can use passkeys stored on this device and in third-party credential managers."
+            return "\(Branding.appName) can use passkeys stored on this device and in third-party credential managers."
         case .denied:
             return "Passkey access was denied. You can grant access in System Settings > Passwords."
         case .missingEntitlement:
             return "This build is missing Apple's approved browser passkey capability, so websites fall back to nearby-device verification instead of local passkeys."
         case .notDetermined:
-            return "Grant Lexon Browser access to passkeys for passwordless sign-in on supported websites."
+            return "Grant \(Branding.appName) access to passkeys for passwordless sign-in on supported websites."
         case .unavailable:
             return "Passkeys require macOS 13.3 or later."
         }

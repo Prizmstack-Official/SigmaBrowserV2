@@ -1476,7 +1476,12 @@ class TabManager: ObservableObject {
     // WKWebView is returned to WebKit so it can load popup content. No initial
     // navigation is performed to preserve window.opener scripting semantics.
     @discardableResult
-    func createPopupTab(in space: Space? = nil, parentTab: Tab? = nil) -> Tab {
+    func createPopupTab(
+        in space: Space? = nil,
+        parentTab: Tab? = nil,
+        existingWebView: WKWebView? = nil,
+        activate: Bool = true
+    ) -> Tab {
         let targetSpace: Space? = space ?? currentSpace ?? ensureDefaultSpaceIfNeeded()
         // Ensure target space has a profile assignment
         if let ts = targetSpace, ts.profileId == nil {
@@ -1498,11 +1503,14 @@ class TabManager: ObservableObject {
             spaceId: sid,
             index: nextIndex,
             parentTabId: sanitizedParentTabId(for: parentTab, in: sid),
-            browserManager: browserManager
+            browserManager: browserManager,
+            existingWebView: existingWebView
         )
         newTab.isPopupHost = true
         addTab(newTab)
-        setActiveTab(newTab)
+        if activate {
+            setActiveTab(newTab)
+        }
         return newTab
     }
 

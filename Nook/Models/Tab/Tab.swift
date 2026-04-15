@@ -32,6 +32,9 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
     // MARK: - OAuth Flow State
     /// Whether this tab is hosting an OAuth/sign-in flow popup
     var isOAuthFlow: Bool = false
+    /// Whether the browser should auto-detect completion and drive the flow lifecycle.
+    /// Native-managed identity requests use this; website-managed popups should not.
+    var managesOAuthLifecycle: Bool = false
     /// Reference to the parent tab that initiated this OAuth flow
     var oauthParentTabId: UUID?
     /// The OAuth provider host (e.g., "accounts.google.com") for tracking protection exemption
@@ -2575,7 +2578,7 @@ extension Tab: WKNavigationDelegate {
         }
         
         // Check for OAuth completion and auto-close if needed
-        if isOAuthFlow, let currentURL = webView.url {
+        if isOAuthFlow, managesOAuthLifecycle, let currentURL = webView.url {
             checkOAuthCompletion(url: currentURL)
         }
     }
@@ -2639,6 +2642,7 @@ extension Tab: WKNavigationDelegate {
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
         if isOAuthFlow,
+           managesOAuthLifecycle,
            let url = navigationAction.request.url,
            matchesOAuthCompletion(url: url),
            url.scheme?.hasPrefix("http") == false {
@@ -3128,24 +3132,45 @@ extension Tab: WKUIDelegate {
             return nil  // Don't create a WebView, we're using Peek
         }
 
-        // For regular popups, create a new webView with the EXACT configuration that WebKit provided
+        // Create the exact WebKit-provided popup WebView first.
         let newWebView = FocusableWKWebView(frame: .zero, configuration: configuration)
 
-        // Create a new tab to manage this webView
-        let space = bm.tabManager.currentSpace
-        let newTab = bm.tabManager.createPopupTab(in: space, parentTab: self)
-        if isAuthPopup, let url = requestedURL {
-            print("🔐 [Tab] OAuth/signin popup detected, opening as child tab: \(url.absoluteString)")
-            if let providerHost = url.host?.lowercased() {
-                bm.oauthAllowDomain(providerHost)
-                newTab.oauthProviderHost = providerHost
-            }
+        let newTab: Tab
+        if isAuthPopup {
+            let initialURL = requestedURL ?? URL(string: "about:blank")!
+            newTab = Tab(
+                url: initialURL,
+                name: "Sign In",
+                favicon: "globe",
+                spaceId: spaceId,
+                index: 0,
+                parentTabId: self.id,
+                browserManager: bm
+            )
+            newTab.isPopupHost = true
             newTab.isOAuthFlow = true
             newTab.oauthParentTabId = self.id
-            newTab.oauthCompletionURLPattern = OAuthDetector.oauthCompletionPattern(from: url)
-        }
-        if let activeWindow = bm.windowRegistry?.activeWindow {
-            bm.selectTab(newTab, in: activeWindow)
+            newTab._webView = newWebView
+
+            if let url = requestedURL {
+                print("🔐 [Tab] OAuth/signin popup detected, opening in standalone window: \(url.absoluteString)")
+                if let providerHost = url.host?.lowercased() {
+                    bm.oauthAllowDomain(providerHost)
+                    newTab.oauthProviderHost = providerHost
+                }
+            }
+        } else {
+            // For regular popups, keep using the existing tab-based popup host path.
+            let space = bm.tabManager.currentSpace
+            newTab = bm.tabManager.createPopupTab(
+                in: space,
+                parentTab: self,
+                existingWebView: newWebView,
+                activate: false
+            )
+            if let activeWindow = bm.windowRegistry?.activeWindow {
+                bm.selectTab(newTab, in: activeWindow)
+            }
         }
 
         // Set up the new webView with the same delegates and settings as the current tab
@@ -3153,43 +3178,14 @@ extension Tab: WKUIDelegate {
         newWebView.uiDelegate = newTab
         newWebView.allowsBackForwardNavigationGestures = true
         newWebView.allowsMagnification = true
+        newWebView.setValue(true, forKey: "drawsBackground")
 
         // Set the owning tab reference
         newWebView.owningTab = newTab
 
-        // Store the webView in the new tab
-        newTab._webView = newWebView
-
-        // Set up message handlers
-        // Remove any existing handlers first to avoid duplicates
-        newWebView.configuration.userContentController.removeScriptMessageHandler(
-            forName: "linkHover")
-        newWebView.configuration.userContentController.removeScriptMessageHandler(
-            forName: "commandHover")
-        newWebView.configuration.userContentController.removeScriptMessageHandler(
-            forName: "commandClick")
-        newWebView.configuration.userContentController.removeScriptMessageHandler(
-            forName: "pipStateChange")
-        newWebView.configuration.userContentController.removeScriptMessageHandler(
-            forName: "mediaStateChange_\(newTab.id.uuidString)")
-        newWebView.configuration.userContentController.removeScriptMessageHandler(
-            forName: "backgroundColor_\(newTab.id.uuidString)")
-        newWebView.configuration.userContentController.removeScriptMessageHandler(
-            forName: "historyStateDidChange")
-        newWebView.configuration.userContentController.removeScriptMessageHandler(
-            forName: "NookIdentity")
-
-        // Now add the handlers
-        newWebView.configuration.userContentController.add(newTab, name: "linkHover")
-        newWebView.configuration.userContentController.add(newTab, name: "commandHover")
-        newWebView.configuration.userContentController.add(newTab, name: "commandClick")
-        newWebView.configuration.userContentController.add(newTab, name: "pipStateChange")
-        newWebView.configuration.userContentController.add(
-            newTab, name: "mediaStateChange_\(newTab.id.uuidString)")
-        newWebView.configuration.userContentController.add(
-            newTab, name: "backgroundColor_\(newTab.id.uuidString)")
-        newWebView.configuration.userContentController.add(newTab, name: "historyStateDidChange")
-        newWebView.configuration.userContentController.add(newTab, name: "NookIdentity")
+        setupOAuthTabMessageHandlers(for: newTab, webView: newWebView)
+        newTab.setupThemeColorObserver(for: newWebView)
+        newTab.setupNavigationStateObservers(for: newWebView)
 
         // Set custom user agent
         newWebView.customUserAgent =
@@ -3199,14 +3195,35 @@ extension Tab: WKUIDelegate {
         newWebView.configuration.preferences.isFraudulentWebsiteWarningEnabled = true
         newWebView.configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
 
-        // Load the URL if provided
+        // Keep tab metadata in sync, but let WebKit drive popup navigation so
+        // opener-based auth flows (like Google GIS) retain their popup semantics.
         if let url = navigationAction.request.url, url.scheme != nil,
             url.absoluteString != "about:blank"
         {
-            newTab.loadURL(url)
+            newTab.url = url
+            newTab.loadingState = .didStartProvisionalNavigation
+        }
+
+        if isAuthPopup {
+            bm.trackingProtectionManager.prepareOAuthPopupWebView(newWebView)
+            bm.presentStandaloneOAuthPopupWindow(
+                for: newTab,
+                webView: newWebView,
+                requestedURL: requestedURL,
+                windowFeatures: windowFeatures,
+                parentWindow: webView.window
+            )
         }
 
         return newWebView
+    }
+
+    public func webViewDidClose(_ webView: WKWebView) {
+        if browserManager?.closeStandaloneOAuthPopupWindow(tabId: self.id, notifyClose: false) == true {
+            return
+        }
+        print("🔐 [Tab] WebKit requested popup close for tab: \(name)")
+        browserManager?.tabManager.removeTab(self.id)
     }
 
     // MARK: - OAuth Tab Helpers
@@ -3238,7 +3255,7 @@ extension Tab: WKUIDelegate {
     
     /// Checks if a URL indicates OAuth completion and handles the flow
     private func checkOAuthCompletion(url: URL) {
-        guard isOAuthFlow, let parentTabId = oauthParentTabId,
+        guard isOAuthFlow, managesOAuthLifecycle, let parentTabId = oauthParentTabId,
               let bm = browserManager else { return }
         
         let urlString = url.absoluteString.lowercased()

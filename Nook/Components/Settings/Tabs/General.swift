@@ -17,10 +17,10 @@ struct SettingsGeneralTab: View {
         HStack(alignment: .top) {
             MemberCard()
             Form {
-                Toggle("Warn before quitting Lexon Browser", isOn: $settings.askBeforeQuit)
-                Toggle("Automatically update Lexon Browser", isOn: .constant(true))
+                Toggle("Warn before quitting \(Branding.appName)", isOn: $settings.askBeforeQuit)
+                Toggle("Automatically update \(Branding.appName)", isOn: .constant(true))
                     .disabled(true)
-                Toggle("Lexon Browser Ad Blocker", isOn: .constant(false))
+                Toggle("\(Branding.appName) Ad Blocker", isOn: .constant(false))
                     .disabled(true)
 
                 Section(header: Text("Search")) {

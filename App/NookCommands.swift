@@ -80,10 +80,10 @@ struct NookCommands: Commands {
         CommandGroup(replacing: .newItem) {}
         CommandGroup(replacing: .windowList) {}
 
-        // App Menu Section (under Lexon Browser)
+        // App Menu Section (under the app menu)
         CommandGroup(after: .appInfo) {
             Divider()
-            Button("Make Lexon Browser Default Browser") {
+            Button("Make \(Branding.appName) Default Browser") {
                 browserManager.setAsDefaultBrowser()
             }
             

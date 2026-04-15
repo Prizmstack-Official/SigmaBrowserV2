@@ -23,7 +23,7 @@ import SwiftUI
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("A new version of Nook is available!")
+                Text("A new version of \(Branding.appName) is available!")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.9))
                     .lineLimit(1)
