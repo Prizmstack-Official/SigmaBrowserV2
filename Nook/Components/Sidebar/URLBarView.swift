@@ -12,11 +12,12 @@ struct URLBarView: View {
     @Environment(BrowserWindowState.self) private var windowState
     @Environment(\.nookSettings) var nookSettings
     @Environment(\.colorScheme) var colorScheme
+    @StateObject private var tabWrapper = ObservableTabWrapper()
     @State private var isHovering: Bool = false
     var isSidebarHovered: Bool
 
     var body: some View {
-        let currentTab = browserManager.currentTab(for: windowState)
+        let currentTab = tabWrapper.tab
 
         ZStack {
             HStack(spacing: 8) {
@@ -96,10 +97,17 @@ struct URLBarView: View {
                 isHovering = hovering
             }
         }
+        .onAppear {
+            tabWrapper.setContext(browserManager: browserManager, windowState: windowState)
+            updateCurrentTab()
+        }
+        .onChange(of: browserManager.currentTab(for: windowState)?.id) { _, _ in
+            updateCurrentTab()
+        }
         // Focus URL bar when tapping anywhere in the bar
         .contentShape(Rectangle())
         .onTapGesture {
-            let currentURL = browserManager.currentTab(for: windowState)?.url.absoluteString ?? ""
+            let currentURL = tabWrapper.tab?.url.absoluteString ?? ""
             windowState.commandPalette?.open(prefill: currentURL, navigateCurrentTab: true)
         }
         
@@ -113,21 +121,25 @@ struct URLBarView: View {
     }
     
     private var displayURL: String {
-            guard let currentTab = browserManager.currentTab(for: windowState) else {
-                return ""
-            }
-            return formatURL(currentTab.url)
+        guard let currentTab = tabWrapper.tab else {
+            return ""
         }
+        return formatURL(currentTab.url)
+    }
+
+    private func updateCurrentTab() {
+        tabWrapper.updateTab(browserManager.currentTab(for: windowState))
+    }
         
-        private func formatURL(_ url: URL) -> String {
-            guard let host = url.host else {
-                return url.absoluteString
-            }
-            
-            let cleanHost = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
-            
-            return cleanHost
+    private func formatURL(_ url: URL) -> String {
+        guard let host = url.host else {
+            return url.absoluteString
         }
+
+        let cleanHost = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+
+        return cleanHost
+    }
 }
 
 // MARK: - URL Bar Button Style

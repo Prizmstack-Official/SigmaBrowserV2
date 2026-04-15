@@ -4,6 +4,7 @@
 //
 //  Created by Maciek Bagiński on 30/07/2025.
 //
+import Combine
 import SwiftUI
 
 // Wrapper to properly observe Tab object and use active window's WebView
@@ -12,6 +13,7 @@ class ObservableTabWrapper: ObservableObject {
     @Published var tab: Tab?
     weak var browserManager: BrowserManager?
     weak var windowState: BrowserWindowState?
+    private var tabChangeCancellable: AnyCancellable?
     
     var canGoBack: Bool {
         if let tab = tab,
@@ -34,7 +36,12 @@ class ObservableTabWrapper: ObservableObject {
     }
     
     func updateTab(_ newTab: Tab?) {
+        guard tab !== newTab else { return }
+        tabChangeCancellable?.cancel()
         tab = newTab
+        tabChangeCancellable = newTab?.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
     }
     
     func setContext(browserManager: BrowserManager, windowState: BrowserWindowState) {

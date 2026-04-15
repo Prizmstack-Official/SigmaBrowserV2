@@ -17,9 +17,9 @@ import WebKit
 @MainActor
 public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
     public let id: UUID
-    var url: URL
-    var name: String
-    var favicon: SwiftUI.Image
+    @Published var url: URL
+    @Published var name: String
+    @Published var favicon: SwiftUI.Image
     var spaceId: UUID?
     var index: Int
     var profileId: UUID?
@@ -823,7 +823,7 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
         // Note: stopNativeAudioMonitoring() is main actor-isolated and cannot be called from deinit
         // The cleanup will be handled by the closeTab() method which is called before deinit
 
-        print("🧹 [Tab] deinit cleanup completed for: \(name)")
+        print("🧹 [Tab] deinit cleanup completed")
     }
 
     func loadURL(_ newURL: URL) {
