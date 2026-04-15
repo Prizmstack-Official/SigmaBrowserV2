@@ -61,7 +61,7 @@ struct SidebarMenuDownloadsTab: View {
                     : LexonTheme.fieldFill(for: colorScheme)
             )
             .animation(.easeInOut(duration: 0.1), value: isHovering)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius))
             .onHover { state in
                 isHovering = state
             }
@@ -170,7 +170,7 @@ struct DownloadItem: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
         .background(isHovering ? LexonTheme.hoverFill(for: colorScheme) : .clear)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius))
         .animation(.easeInOut(duration: 0.1), value: isHovering)
         .onHover { state in
             isHovering = state

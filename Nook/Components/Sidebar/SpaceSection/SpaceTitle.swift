@@ -110,8 +110,8 @@ struct SpaceTitle: View {
         .padding(.bottom, 6)
         .frame(maxWidth: .infinity)
         .background(hoverColor)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .contentShape(RoundedRectangle(cornerRadius: 14))
+        .clipShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius))
+        .contentShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius))
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.1)) {
                 isHovering = hovering

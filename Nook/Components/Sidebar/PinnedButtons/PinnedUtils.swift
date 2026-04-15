@@ -51,12 +51,7 @@ enum PinnedTabsConfiguration: String, CaseIterable, Identifiable {
     }
     
     var cornerRadius: CGFloat {
-        switch self {
-        case .large:
-            return 12
-        case .small:
-            return 10
-        }
+        LexonTheme.controlCornerRadius
     }
     
     var strokeWidth: CGFloat {

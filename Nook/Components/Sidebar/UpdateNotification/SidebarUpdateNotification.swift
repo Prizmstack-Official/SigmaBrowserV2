@@ -62,7 +62,7 @@ struct SidebarUpdateNotification: View {
                                 .padding(.vertical, 6)
                                 .frame(maxWidth: .infinity)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 8)
+                                    RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius)
                                         .fill(
                                             colorScheme == .dark
                                                 ? Color.white.opacity(0.12)
@@ -81,11 +81,11 @@ struct SidebarUpdateNotification: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius)
                         .fill(LexonTheme.fieldFill(for: colorScheme, isHovered: isHovering || isExpanded))
                 )
                 .overlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius, style: .continuous)
                         .stroke(LexonTheme.border(for: colorScheme), lineWidth: 1)
                 }
                 .frame(maxWidth: .infinity)

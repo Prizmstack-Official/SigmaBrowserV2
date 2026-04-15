@@ -17,7 +17,7 @@ struct SidebarHoverOverlayView: View {
     @Environment(\.nookSettings) var nookSettings
     @Environment(\.colorScheme) private var colorScheme
 
-    private let cornerRadius: CGFloat = 12
+    private let cornerRadius = LexonTheme.chromeCornerRadius
     private let horizontalInset: CGFloat = 0
     private let verticalInset: CGFloat = 0
 

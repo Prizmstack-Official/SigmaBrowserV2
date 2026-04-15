@@ -148,7 +148,7 @@ struct URLBarButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) var isEnabled
     @State private var isHovering: Bool = false
     
-    private let cornerRadius: CGFloat = 12
+    private let cornerRadius = LexonTheme.controlCornerRadius
     private let size: CGFloat = TopBarMetrics.controlSize
     
     func makeBody(configuration: Configuration) -> some View {

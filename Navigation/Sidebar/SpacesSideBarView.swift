@@ -60,14 +60,14 @@ struct SpacesSideBarView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: LexonTheme.panelCornerRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: LexonTheme.chromeCornerRadius, style: .continuous)
                 .fill(LexonTheme.sidebarShell(for: colorScheme))
         )
         .overlay {
-            RoundedRectangle(cornerRadius: LexonTheme.panelCornerRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: LexonTheme.chromeCornerRadius, style: .continuous)
                 .stroke(LexonTheme.border(for: colorScheme), lineWidth: 0.75)
         }
-        .clipShape(RoundedRectangle(cornerRadius: LexonTheme.panelCornerRadius, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: LexonTheme.chromeCornerRadius, style: .continuous))
         .shadow(color: LexonTheme.shadow(for: colorScheme), radius: 16, x: 0, y: 8)
         .padding(SidebarLayoutMetrics.shellPadding)
         .background(

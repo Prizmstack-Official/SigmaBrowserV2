@@ -157,17 +157,17 @@ struct TabFolderView: View {
             .frame(height: 40)
             .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius)
                     .fill(
                         isDropTargeted
                             ? AppColors.controlBackgroundActive.opacity(0.25)
                             : (isHovering ? AppColors.controlBackgroundHover : Color.clear)
                     )
             )
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius))
         }
         .buttonStyle(PlainButtonStyle())
-        .contentShape(RoundedRectangle(cornerRadius: 12))
+        .contentShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius))
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovering = hovering
@@ -229,7 +229,7 @@ struct TabFolderView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 4)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius)
                 .fill(isDropTargeted ? AppColors.controlBackgroundActive.opacity(0.18) : Color.clear)
         )
         .onAppear {

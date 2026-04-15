@@ -176,7 +176,7 @@ struct PinnedGrid: View {
     }
 
     private var essentialsPlaceholder: some View {
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
+        RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius, style: .continuous)
             .fill(LexonTheme.hoverFill(for: colorScheme))
             .frame(minWidth: nookSettings.pinnedTabsLook.minWidth, minHeight: nookSettings.pinnedTabsLook.minWidth)
     }

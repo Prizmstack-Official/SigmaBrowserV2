@@ -51,10 +51,11 @@ struct AppColors {
 enum LexonTheme {
     static let sidebarRailWidth: CGFloat = 60
     static let sidebarRailItemSize: CGFloat = 40
+    static let chromeCornerRadius: CGFloat = 8
     static let outerCornerRadius: CGFloat = 26
     static let panelCornerRadius: CGFloat = 18
-    static let pillCornerRadius: CGFloat = 14
-    static let controlCornerRadius: CGFloat = 12
+    static let pillCornerRadius: CGFloat = chromeCornerRadius
+    static let controlCornerRadius: CGFloat = chromeCornerRadius
     static let topBarHeight: CGFloat = 44
     static let thinBorder: CGFloat = 1
 

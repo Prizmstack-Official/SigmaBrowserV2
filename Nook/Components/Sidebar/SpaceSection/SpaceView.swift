@@ -488,7 +488,7 @@ struct SpaceView: View {
             .padding(.horizontal, 12)
             .frame(height: 42)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius, style: .continuous)
                     .fill(isNewTabHovered ? LexonTheme.hoverFill(for: colorScheme).opacity(0.7) : Color.clear)
             )
         }
@@ -650,6 +650,10 @@ struct SpaceView: View {
         VStack {
             Button { browserManager.splitManager.enterSplit(with: tab, placeOn: .right, in: windowState) } label: { Label("Open in Split (Right)", systemImage: "rectangle.split.2x1") }
             Button { browserManager.splitManager.enterSplit(with: tab, placeOn: .left, in: windowState) } label: { Label("Open in Split (Left)", systemImage: "rectangle.split.2x1") }
+            if tab.parentTabId != nil {
+                Divider()
+                Button { browserManager.tabManager.promoteSubtabToRegular(tab.id) } label: { Label("Promote to Tab", systemImage: "decrease.indent") }
+            }
             if tab.parentTabId == nil {
                 Divider()
                 Button { onMoveTabUp(tab) } label: { Label("Move Up", systemImage: "arrow.up") }

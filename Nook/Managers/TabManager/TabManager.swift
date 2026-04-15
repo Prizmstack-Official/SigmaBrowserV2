@@ -670,17 +670,35 @@ class TabManager: ObservableObject {
     }
 
     private func sanitizedParentTabId(for parentTab: Tab?, in spaceId: UUID?) -> UUID? {
-        guard let parentTab,
-              let parentSpaceId = parentTab.spaceId,
-              let spaceId,
+        guard let spaceId else {
+            return nil
+        }
+
+        // When a new tab is opened from an existing subtab, keep it grouped under
+        // the same root parent instead of promoting it to a top-level tab.
+        let resolvedParentTab: Tab? = {
+            guard let parentTab else {
+                return nil
+            }
+
+            if let rootParentId = parentTab.parentTabId {
+                return tab(withId: rootParentId)
+            }
+
+            return parentTab
+        }()
+
+        guard let resolvedParentTab,
+              let parentSpaceId = resolvedParentTab.spaceId,
               parentSpaceId == spaceId,
-              parentTab.parentTabId == nil,
-              !parentTab.isPinned,
-              !parentTab.isSpacePinned
+              resolvedParentTab.parentTabId == nil,
+              !resolvedParentTab.isPinned,
+              !resolvedParentTab.isSpacePinned
         else {
             return nil
         }
-        return parentTab.id
+
+        return resolvedParentTab.id
     }
 
     /// Create a new regular tab duplicating the source tab's URL/name and insert near an anchor tab.
@@ -1050,6 +1068,48 @@ class TabManager: ObservableObject {
     func setLockState(_ isLocked: Bool, for tabId: UUID) {
         guard let tab = tab(withId: tabId) else { return }
         tab.isLocked = isLocked
+        persistSnapshot()
+    }
+
+    func promoteSubtabToRegular(_ tabId: UUID) {
+        guard let tab = tab(withId: tabId),
+              let spaceId = tab.spaceId,
+              let parentTabId = tab.parentTabId,
+              var regularTabs = tabsBySpace[spaceId],
+              let currentIndex = regularTabs.firstIndex(where: { $0.id == tabId })
+        else {
+            return
+        }
+
+        let parentGroupLastIndex = regularTabs.enumerated()
+            .filter { entry in
+                entry.element.id == parentTabId || entry.element.parentTabId == parentTabId
+            }
+            .map(\.offset)
+            .max()
+
+        tab.parentTabId = nil
+
+        guard let parentGroupLastIndex else {
+            setTabs(regularTabs, for: spaceId)
+            persistSnapshot()
+            return
+        }
+
+        let rawInsertionIndex = min(parentGroupLastIndex + 1, regularTabs.count)
+        regularTabs.remove(at: currentIndex)
+
+        let adjustedInsertionIndex = currentIndex < rawInsertionIndex
+            ? rawInsertionIndex - 1
+            : rawInsertionIndex
+
+        regularTabs.insert(tab, at: adjustedInsertionIndex)
+
+        for (index, regularTab) in regularTabs.enumerated() {
+            regularTab.index = index
+        }
+
+        setTabs(regularTabs, for: spaceId)
         persistSnapshot()
     }
 

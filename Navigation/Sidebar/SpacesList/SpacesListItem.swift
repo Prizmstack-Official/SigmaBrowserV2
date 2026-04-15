@@ -86,7 +86,7 @@ struct SpacesListItem: View {
             // Normal mode: show icon or emoji
             if isEmoji(space.icon) {
                 Text(space.icon)
-                    .font(.system(size: isActive ? 24 : 22))
+                    .font(.system(size: isActive ? 20 : 18))
                     .opacity(isActive ? 1.0 : 0.78)
                     .background(EmojiPickerAnchor(manager: emojiManager))
                     .onChange(of: emojiManager.selectedEmoji) { _, newValue in
@@ -96,7 +96,7 @@ struct SpacesListItem: View {
 
             } else {
                 Image(systemName: space.icon)
-                    .font(.system(size: isActive ? 18 : 17, weight: isActive ? .semibold : .medium))
+                    .font(.system(size: isActive ? 15 : 14, weight: isActive ? .semibold : .medium))
                     .foregroundStyle(iconColor)
                     .background(EmojiPickerAnchor(manager: emojiManager))
                     .onChange(of: emojiManager.selectedEmoji) { _, newValue in
@@ -223,7 +223,7 @@ struct SpaceListItemButtonStyle: ButtonStyle {
 //    }
     
     private var cornerRadius: CGFloat {
-        min(16, sideLength / 2)
+        LexonTheme.controlCornerRadius
     }
     
     private var borderColor: Color {

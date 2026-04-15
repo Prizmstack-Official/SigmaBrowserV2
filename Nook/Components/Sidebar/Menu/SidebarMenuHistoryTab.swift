@@ -100,7 +100,7 @@ struct SidebarMenuHistoryTab: View {
                     isHovering ? contrastText.opacity(0.08) : contrastText.opacity(0.05)
                 )
                 .animation(.easeInOut(duration: 0.1), value: isHovering)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius))
                 .onHover { state in
                     isHovering = state
                 }
@@ -134,7 +134,7 @@ struct SidebarMenuHistoryTab: View {
                         .easeInOut(duration: 0.1),
                         value: isShowingFilters
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius))
                 }
                 .buttonStyle(PlainButtonStyle())
             }
@@ -541,11 +541,11 @@ struct HistoryRowView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 14)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius)
                 .fill(isHovered ? contrastText.opacity(0.1) : .clear)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .contentShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius))
+        .contentShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius))
         .onHover { hovered in
             withAnimation(.easeInOut(duration: 0.2)) {
                 isHovered = hovered
@@ -702,7 +702,7 @@ struct FiltersSelectButton: View {
                         : isHovering
                         ? contrastText.opacity(0.08) : contrastText.opacity(0.05)
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius))
         }
         .buttonStyle(.plain)
         .animation(.easeInOut(duration: 0.1), value: isHovering)

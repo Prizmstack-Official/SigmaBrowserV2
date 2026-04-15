@@ -50,7 +50,7 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
     var isSpacePinned: Bool = false  // Space-level pinned
     var folderId: UUID?  // Folder membership for tabs within spacepinned area
     var parentTabId: UUID?
-    var isLocked: Bool = false
+    @Published var isLocked: Bool = false
     var completedAt: Date?
     var completionSource: String?
     

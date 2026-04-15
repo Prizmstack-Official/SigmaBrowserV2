@@ -158,11 +158,11 @@ struct MediaControlsView: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
                 .background(
-                    RoundedRectangle(cornerRadius: 10)
+                    RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius)
                         .fill(Color.black)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10)
+                    RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius)
                         .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
                 )
                 .padding(.horizontal, 8)

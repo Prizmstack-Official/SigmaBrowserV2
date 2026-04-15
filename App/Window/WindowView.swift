@@ -206,13 +206,7 @@ struct WindowView: View {
 
     @ViewBuilder
     private func WebContent() -> some View {
-        let cornerRadius: CGFloat = {
-            if #available(macOS 26.0, *) {
-                return LexonTheme.panelCornerRadius
-            } else {
-                return LexonTheme.panelCornerRadius
-            }
-        }()
+        let cornerRadius = LexonTheme.chromeCornerRadius
         
         let hasTopBar = nookSettings.topBarAddressView
         

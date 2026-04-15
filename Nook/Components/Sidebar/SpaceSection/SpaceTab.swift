@@ -49,7 +49,7 @@ struct SpaceTab: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 20, height: 20)
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius, style: .continuous))
                         .opacity(tab.isUnloaded ? 0.5 : 1.0)
                     
                     if tab.isUnloaded {
@@ -66,7 +66,7 @@ struct SpaceTab: View {
                         onMute()
                     }) {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 6)
+                            RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius)
                                 .fill(
                                     isSpeakerHovering
                                         ? (isCurrentTab ? LexonTheme.activeFill(for: colorScheme) : LexonTheme.hoverFill(for: colorScheme))
@@ -107,34 +107,36 @@ struct SpaceTab: View {
                         }
                         .focused($isTextFieldFocused)
                 } else {
-                    Text(tab.name)
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundStyle(textTab)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .textSelection(.disabled) // Make text non-selectable
-                }
-                if tab.isLocked {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                    AnimatedStrikethroughText(
+                        text: tab.name,
+                        font: .system(size: 12, weight: .regular),
+                        color: textTab,
+                        isActive: isDoneHovering && !tab.isLocked
+                    )
+                    .textSelection(.disabled)
                 }
                 Spacer()
 
                 if isHovering || tab.isLocked {
                     HStack(spacing: 4) {
                         Button(action: onToggleLock) {
-                            Image(systemName: tab.isLocked ? "lock.fill" : "lock.open")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(textTab)
-                                .frame(width: 24, height: 24)
-                                .background(
-                                    isLockHovering
-                                        ? (isCurrentTab ? LexonTheme.activeFill(for: colorScheme) : LexonTheme.hoverFill(for: colorScheme))
-                                        : Color.clear
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                            ZStack {
+                                RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius)
+                                    .fill(
+                                        isLockHovering
+                                            ? (isCurrentTab ? LexonTheme.activeFill(for: colorScheme) : LexonTheme.hoverFill(for: colorScheme))
+                                            : Color.clear
+                                    )
+                                    .frame(width: 24, height: 24)
+                                    .animation(.easeInOut(duration: 0.05), value: isLockHovering)
+                                Image(systemName: tab.isLocked ? "lock.fill" : "lock.open")
+                                    .contentTransition(.symbolEffect(.replace))
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(tab.isLocked ? LexonTheme.secondaryText(for: colorScheme) : textTab)
+                            }
                         }
+                        .frame(width: 24, height: 24)
+                        .animation(.easeInOut(duration: 0.12), value: tab.isLocked)
                         .buttonStyle(PlainButtonStyle())
                         .onHover { hovering in
                             isLockHovering = hovering
@@ -150,7 +152,7 @@ struct SpaceTab: View {
                                         ? (isCurrentTab ? LexonTheme.activeFill(for: colorScheme) : LexonTheme.hoverFill(for: colorScheme))
                                         : Color.clear
                                 )
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                .clipShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius))
                         }
                         .disabled(tab.isLocked)
                         .buttonStyle(PlainButtonStyle())
@@ -166,7 +168,7 @@ struct SpaceTab: View {
             .background(
                 backgroundColor
             )
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius, style: .continuous))
         }
         .buttonStyle(PlainButtonStyle())
         .onHover { hovering in
@@ -257,6 +259,13 @@ struct SpaceTab: View {
     @ViewBuilder
     private var actionsMenuSection: some View {
         splitMenu
+        if tab.parentTabId != nil {
+            Button {
+                browserManager.tabManager.promoteSubtabToRegular(tab.id)
+            } label: {
+                Label("Promote to Tab", systemImage: "decrease.indent")
+            }
+        }
         duplicateButton
         moveToSpaceMenu
         Button {

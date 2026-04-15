@@ -28,13 +28,7 @@ struct TopBarView: View {
     @State private var previousTabId: UUID? = nil
 
     var body: some View {
-        let cornerRadius: CGFloat = {
-            if #available(macOS 26.0, *) {
-                return 8
-            } else {
-                return 8
-            }
-        }()
+        let cornerRadius = LexonTheme.chromeCornerRadius
 
         let currentTab = tabWrapper.tab
         let hasPiPControl =
@@ -619,8 +613,8 @@ struct BrowserUtilityPanelIcon: View {
             .foregroundStyle(navButtonColor)
             .frame(width: TopBarMetrics.controlSize, height: TopBarMetrics.controlSize)
             .background(backgroundColor)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius, style: .continuous))
         .help(title)
         .onHover { state in
             isHovered = state
@@ -667,10 +661,10 @@ struct BrowserUtilityPanelView: View {
         .frame(width: panel == .history ? 430 : 400, height: 520)
         .background(panelBackground)
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: LexonTheme.chromeCornerRadius, style: .continuous)
                 .stroke(LexonTheme.border(for: colorScheme), lineWidth: 1)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: LexonTheme.chromeCornerRadius, style: .continuous))
         .shadow(color: LexonTheme.shadow(for: colorScheme), radius: 24, x: 0, y: 16)
     }
 
@@ -701,7 +695,7 @@ struct BrowserUtilityPanelView: View {
                 .environmentObject(browserManager.gradientColorManager)
                 .environment(windowState)
 
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: LexonTheme.chromeCornerRadius, style: .continuous)
                 .fill(LexonTheme.sidebarShell(for: colorScheme))
         }
     }

@@ -34,7 +34,7 @@ struct SplitTabRow: View {
             )
         }
         .frame(height: 34)
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius, style: .continuous))
     }
 }
 
@@ -68,12 +68,13 @@ private struct SplitHalfTab: View {
                             .resizable()
                             .scaledToFit()
                             .frame(width: 18, height: 18)
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
-                        Text(tab.name)
-                            .font(.system(size: 12, weight: .regular))
-                            .foregroundStyle(textTab)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
+                            .clipShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius))
+                        AnimatedStrikethroughText(
+                            text: tab.name,
+                            font: .system(size: 12, weight: .regular),
+                            color: textTab,
+                            isActive: isCloseHovering
+                        )
                         Spacer(minLength: 4)
                         if isHovering {
                             Button(action: onClose) {
@@ -89,7 +90,7 @@ private struct SplitHalfTab: View {
                                                 : AppColors.controlBackgroundActive)
                                             : Color.clear
                                     )
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    .clipShape(RoundedRectangle(cornerRadius: LexonTheme.controlCornerRadius))
                             }
                             .buttonStyle(PlainButtonStyle())
                             .onHover { state in
