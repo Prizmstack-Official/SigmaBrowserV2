@@ -579,18 +579,13 @@ class BrowserManager: ObservableObject {
         standaloneOAuthPopupWindows.removeValue(forKey: tabId)
         standaloneOAuthPopupDelegates.removeValue(forKey: tabId)
 
-        let cleanupDelay: TimeInterval = notifyClose ? 0.0 : 0.75
+        // Page-initiated closes (notifyClose == false) mean the auth page called
+        // window.close() after finishing its handshake (e.g. Google GIS posts the
+        // token back via postMessage). The parent tab is already processing the
+        // result, so a forced reload would race with the in-progress navigation
+        // and produce WebKit "entangling" errors / freezes.
+        let cleanupDelay: TimeInterval = notifyClose ? 0.0 : 1.5
         if let tab {
-            if notifyClose == false,
-               tab.isOAuthFlow,
-               tab.managesOAuthLifecycle == false,
-               let parentTabId = tab.oauthParentTabId,
-               let parentTab = tabManager.allTabs().first(where: { $0.id == parentTabId }) {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    parentTab.activeWebView.reload()
-                }
-            }
-
             DispatchQueue.main.asyncAfter(deadline: .now() + cleanupDelay) {
                 tab.cleanupStandalonePopupWebView()
             }

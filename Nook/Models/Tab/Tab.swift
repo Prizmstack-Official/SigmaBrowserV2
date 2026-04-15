@@ -1768,47 +1768,57 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
     }
 
     /// Lightweight teardown for standalone OAuth popup windows.
-    /// Avoids the aggressive JS kill script so providers can finish any final
-    /// close/postMessage handoff without the app freezing or interrupting IPC.
+    /// Navigates to about:blank first so the WebContent process cleanly winds
+    /// down its IPC channels, then tears down handlers/observers after a short
+    /// delay to avoid "entangling context after pre-commit" errors.
     public func cleanupStandalonePopupWebView() {
         guard let webView = _webView else { return }
 
         print("🧹 [Tab] Performing lightweight standalone popup cleanup for: \(name)")
 
-        webView.stopLoading()
-
-        let controller = webView.configuration.userContentController
-        let handlerNames = [
-            "linkHover",
-            "commandHover",
-            "commandClick",
-            "pipStateChange",
-            "mediaStateChange_\(id.uuidString)",
-            "backgroundColor_\(id.uuidString)",
-            "historyStateDidChange",
-            "NookIdentity",
-            "nookShortcutDetect",
-        ]
-        for handlerName in handlerNames {
-            controller.removeScriptMessageHandler(forName: handlerName)
-        }
-
-        if let focusableWebView = webView as? FocusableWKWebView {
-            focusableWebView.contextMenuBridge?.detach()
-            focusableWebView.contextMenuBridge = nil
-        }
-
-        removeThemeColorObserver(from: webView)
-        removeNavigationStateObservers(from: webView)
-
+        // Detach delegates immediately so no further callbacks fire.
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
-        webView.removeFromSuperview()
-        browserManager?.webViewCoordinator?.removeWebViewFromContainers(webView)
 
-        _webView = nil
+        // Navigate to about:blank to cleanly terminate the previous page's
+        // WebContent session before tearing down the webview.
+        webView.loadHTMLString("", baseURL: nil)
 
-        print("✅ [Tab] Lightweight standalone popup cleanup completed for: \(name)")
+        // Give WebKit a moment to commit the blank page, then remove handlers.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self, weak webView] in
+            guard let self, let webView else { return }
+
+            let controller = webView.configuration.userContentController
+            let handlerNames = [
+                "linkHover",
+                "commandHover",
+                "commandClick",
+                "pipStateChange",
+                "mediaStateChange_\(self.id.uuidString)",
+                "backgroundColor_\(self.id.uuidString)",
+                "historyStateDidChange",
+                "NookIdentity",
+                "nookShortcutDetect",
+            ]
+            for handlerName in handlerNames {
+                controller.removeScriptMessageHandler(forName: handlerName)
+            }
+
+            if let focusableWebView = webView as? FocusableWKWebView {
+                focusableWebView.contextMenuBridge?.detach()
+                focusableWebView.contextMenuBridge = nil
+            }
+
+            self.removeThemeColorObserver(from: webView)
+            self.removeNavigationStateObservers(from: webView)
+
+            webView.removeFromSuperview()
+            self.browserManager?.webViewCoordinator?.removeWebViewFromContainers(webView)
+
+            self._webView = nil
+
+            print("✅ [Tab] Lightweight standalone popup cleanup completed for: \(self.name)")
+        }
     }
 
     public override func observeValue(
@@ -3270,6 +3280,20 @@ extension Tab: WKUIDelegate {
     }
 
     public func webViewDidClose(_ webView: WKWebView) {
+        if isStandalonePopupWindow {
+            // Hide the window instantly so the user sees it disappear, but
+            // defer the actual close/teardown so WebKit can finish the
+            // postMessage IPC between the popup and the parent webview.
+            print("🔐 [Tab] webViewDidClose for standalone popup — hiding now, closing after delay: \(name)")
+            webView.window?.orderOut(nil)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                guard let self else { return }
+                _ = self.browserManager?.closeStandaloneOAuthPopupWindow(
+                    tabId: self.id, notifyClose: false
+                )
+            }
+            return
+        }
         if browserManager?.closeStandaloneOAuthPopupWindow(tabId: self.id, notifyClose: false) == true {
             return
         }
