@@ -598,6 +598,16 @@ class BrowserManager: ObservableObject {
         print("🔐 [BrowserManager] Closed standalone OAuth popup window for tab: \(tabId)")
     }
 
+    /// Drops all strong references to a standalone OAuth popup's window, tab,
+    /// and delegate without calling `close()` on the window. The caller is
+    /// responsible for having already hidden the window via `orderOut`.
+    func releaseStandaloneOAuthPopupReferences(tabId: UUID) {
+        standaloneOAuthPopupTabs.removeValue(forKey: tabId)
+        standaloneOAuthPopupWindows.removeValue(forKey: tabId)
+        standaloneOAuthPopupDelegates.removeValue(forKey: tabId)
+        print("🔐 [BrowserManager] Released standalone OAuth popup references for tab: \(tabId)")
+    }
+
     private func adoptProfileIfNeeded(
         for windowState: BrowserWindowState, context: ProfileSwitchContext
     ) {

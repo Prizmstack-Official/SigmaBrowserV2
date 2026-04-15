@@ -3281,16 +3281,23 @@ extension Tab: WKUIDelegate {
 
     public func webViewDidClose(_ webView: WKWebView) {
         if isStandalonePopupWindow {
-            // Hide the window instantly so the user sees it disappear, but
-            // defer the actual close/teardown so WebKit can finish the
-            // postMessage IPC between the popup and the parent webview.
-            print("🔐 [Tab] webViewDidClose for standalone popup — hiding now, closing after delay: \(name)")
-            webView.window?.orderOut(nil)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            // The popup page (e.g. gsi/transform) called window.close().
+            // WebKit still needs the window + webview alive to finish the
+            // postMessage IPC back to the opener. Hiding or closing the
+            // window too early kills that channel and freezes the app.
+            print("🔐 [Tab] webViewDidClose for standalone popup — deferring teardown: \(name)")
+
+            let popupWindow = webView.window
+
+            // Phase 1: hide the popup after WebKit's IPC has settled.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                popupWindow?.orderOut(nil)
+            }
+
+            // Phase 2: release all references; let ARC dealloc naturally.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
                 guard let self else { return }
-                _ = self.browserManager?.closeStandaloneOAuthPopupWindow(
-                    tabId: self.id, notifyClose: false
-                )
+                self.deferredStandalonePopupTeardown()
             }
             return
         }
@@ -3299,6 +3306,43 @@ extension Tab: WKUIDelegate {
         }
         print("🔐 [Tab] WebKit requested popup close for tab: \(name)")
         browserManager?.tabManager.removeTab(self.id)
+    }
+
+    /// Minimal teardown that avoids touching the webview's loading state.
+    /// Only removes observers/handlers (to prevent crashes and retain cycles)
+    /// and nils references so ARC can deallocate everything naturally.
+    private func deferredStandalonePopupTeardown() {
+        guard let webView = _webView else { return }
+        print("🧹 [Tab] Deferred standalone popup teardown: \(name)")
+
+        // KVO observers must be removed before the webview deallocates.
+        removeThemeColorObserver(from: webView)
+        removeNavigationStateObservers(from: webView)
+
+        // Message handlers retain `self` — remove to break retain cycle.
+        let controller = webView.configuration.userContentController
+        for handlerName in [
+            "linkHover", "commandHover", "commandClick",
+            "pipStateChange", "mediaStateChange_\(id.uuidString)",
+            "backgroundColor_\(id.uuidString)", "historyStateDidChange",
+            "NookIdentity", "nookShortcutDetect",
+        ] {
+            controller.removeScriptMessageHandler(forName: handlerName)
+        }
+
+        if let focusableWebView = webView as? FocusableWKWebView {
+            focusableWebView.contextMenuBridge?.detach()
+            focusableWebView.contextMenuBridge = nil
+        }
+
+        webView.navigationDelegate = nil
+        webView.uiDelegate = nil
+        _webView = nil
+
+        // Release BrowserManager's references (window, tab, delegate).
+        browserManager?.releaseStandaloneOAuthPopupReferences(tabId: self.id)
+
+        print("✅ [Tab] Standalone popup teardown done: \(name)")
     }
 
     // MARK: - OAuth Tab Helpers
