@@ -20,10 +20,9 @@ enum OAuthDetector {
 
     // MARK: - Known Provider Hosts
 
-    /// Well-known OAuth/OIDC/SSO provider host suffixes.
-    /// Matched with `host == known || host.hasSuffix(".\(known)")` to avoid
-    /// false positives from substring matching (e.g. "mygithub.com" ≠ "github.com").
-    static let knownProviderHosts: [String] = [
+    /// Dedicated auth/SSO hosts where any URL is an auth endpoint.
+    /// Matched with `host == known || host.hasSuffix(".\(known)")`.
+    static let dedicatedAuthHosts: [String] = [
         // Google
         "accounts.google.com",
         "identitytoolkit.googleapis.com",
@@ -33,21 +32,16 @@ enum OAuthDetector {
         "login.microsoftonline.com",
         "login.live.com",
         "login.windows.net",
-        "b2clogin.com",                     // Azure AD B2C custom domains
+        "b2clogin.com",
 
         // Apple
         "appleid.apple.com",
         "idmsa.apple.com",
 
-        // GitHub / GitLab / Bitbucket
-        "github.com",
-        "gitlab.com",
-        "bitbucket.org",
-
-        // Auth0 (also *.auth0.com custom domains)
+        // Auth0
         "auth0.com",
 
-        // Okta (also *.okta.com / *.oktapreview.com)
+        // Okta
         "okta.com",
         "oktapreview.com",
 
@@ -65,44 +59,16 @@ enum OAuthDetector {
         // Cloudflare Access
         "cloudflareaccess.com",
 
-        // Slack
-        "slack.com",
-
-        // Zoom
-        "zoom.us",
-
-        // Facebook / Meta
-        "facebook.com",
-        "m.facebook.com",
-
-        // Amazon / AWS
+        // Amazon / AWS (dedicated auth subdomains)
         "signin.aws.amazon.com",
         "auth.aws.amazon.com",
-        "amazoncognito.com",                // AWS Cognito hosted UI
+        "amazoncognito.com",
 
-        // LinkedIn
-        "linkedin.com",
-        "www.linkedin.com",
-
-        // Twitter / X
-        "twitter.com",
-        "api.twitter.com",
-        "x.com",
-
-        // Discord
-        "discord.com",
-
-        // Twitch
+        // Twitch (dedicated auth subdomain)
         "id.twitch.tv",
 
-        // Dropbox
-        "dropbox.com",
-
-        // Spotify
+        // Spotify (dedicated auth subdomain)
         "accounts.spotify.com",
-
-        // Reddit
-        "reddit.com",
 
         // Yahoo
         "login.yahoo.com",
@@ -130,22 +96,54 @@ enum OAuthDetector {
         // Stripe Connect
         "connect.stripe.com",
 
-        // Notion
-        "www.notion.so",
-
-        // Figma
-        "www.figma.com",
-
         // Shopify
         "accounts.shopify.com",
 
         // Twilio / SendGrid
         "login.twilio.com",
-
-        // GitHub Enterprise Server uses custom domains; detected by path patterns below.
-        // Keycloak uses custom domains; detected by path patterns below.
-        // Dex uses custom domains; detected by path patterns below.
     ]
+
+    /// General-purpose hosts that also serve OAuth endpoints.
+    /// Only matched when the URL path additionally signals an auth flow.
+    private static let generalPurposeOAuthHosts: [String: [String]] = [
+        // GitHub — OAuth lives under /login/oauth/
+        "github.com":       ["/login/oauth/", "/login", "/session"],
+        // GitLab
+        "gitlab.com":       ["/oauth/", "/users/sign_in", "/users/auth/"],
+        // Bitbucket
+        "bitbucket.org":    ["/site/oauth2/", "/account/signin"],
+        // Slack
+        "slack.com":        ["/oauth/", "/openid/connect/"],
+        // Zoom
+        "zoom.us":          ["/oauth/"],
+        // Facebook / Meta
+        "facebook.com":     ["/dialog/oauth", "/v", "/login"],
+        "m.facebook.com":   ["/dialog/oauth", "/v", "/login"],
+        // LinkedIn
+        "linkedin.com":     ["/oauth/", "/uas/", "/login"],
+        "www.linkedin.com": ["/oauth/", "/uas/", "/login"],
+        // Twitter / X
+        "twitter.com":      ["/i/oauth2/", "/oauth/"],
+        "api.twitter.com":  ["/oauth/", "/2/oauth2/"],
+        "x.com":            ["/i/oauth2/", "/oauth/"],
+        // Discord
+        "discord.com":      ["/oauth2/", "/api/oauth2/", "/login"],
+        // Dropbox
+        "dropbox.com":      ["/oauth2/", "/1/oauth2/"],
+        // Reddit
+        "reddit.com":       ["/api/v1/authorize"],
+        // Notion
+        "www.notion.so":    ["/authorize", "/login"],
+        // Figma
+        "www.figma.com":    ["/oauth", "/login"],
+    ]
+
+    /// Combined list for backward compatibility (e.g. assist banner cooldown keying).
+    static let knownProviderHosts: [String] = {
+        var all = dedicatedAuthHosts
+        all.append(contentsOf: generalPurposeOAuthHosts.keys)
+        return all
+    }()
 
     // MARK: - Public API
 
@@ -153,12 +151,17 @@ enum OAuthDetector {
     ///
     /// Use this when a false positive has a visible cost (e.g. triggering the assist banner,
     /// deciding that an OAuth tab's flow has NOT completed yet).
+    ///
+    /// Dedicated auth hosts (e.g. accounts.google.com) match on host alone.
+    /// General-purpose hosts (e.g. github.com) require an auth-specific path
+    /// to avoid treating normal page visits as OAuth flows.
     static func isLikelyOAuthURL(_ url: URL) -> Bool {
         let host = (url.host ?? "").lowercased()
         let path = url.path.lowercased()
         let query = url.query?.lowercased() ?? ""
 
-        if matchesKnownProvider(host: host) { return true }
+        if matchesDedicatedAuthHost(host: host) { return true }
+        if matchesGeneralPurposeOAuthHost(host: host, path: path) { return true }
         if hasStrongOAuthPath(path) { return true }
         if hasOAuthQueryParams(query) { return true }
 
@@ -248,9 +251,30 @@ enum OAuthDetector {
 
     // MARK: - Helpers (internal for testing)
 
+    /// Matches any host in the combined list (dedicated + general-purpose).
+    /// Useful for domain-level bookkeeping (e.g. tracking-protection allow-list).
     static func matchesKnownProvider(host: String) -> Bool {
         for known in knownProviderHosts {
             if host == known || host.hasSuffix(".\(known)") { return true }
+        }
+        return false
+    }
+
+    /// Host-only match for domains whose sole purpose is authentication.
+    static func matchesDedicatedAuthHost(host: String) -> Bool {
+        for known in dedicatedAuthHosts {
+            if host == known || host.hasSuffix(".\(known)") { return true }
+        }
+        return false
+    }
+
+    /// Matches general-purpose hosts only when the URL path contains a
+    /// known auth-specific segment for that host.
+    private static func matchesGeneralPurposeOAuthHost(host: String, path: String) -> Bool {
+        for (knownHost, authPaths) in generalPurposeOAuthHosts {
+            let hostMatches = host == knownHost || host.hasSuffix(".\(knownHost)")
+            guard hostMatches else { continue }
+            if authPaths.contains(where: { path.contains($0) }) { return true }
         }
         return false
     }
