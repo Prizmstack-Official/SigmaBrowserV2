@@ -12,6 +12,7 @@
 
 set -euo pipefail
 
+PROJECT="Nook.xcodeproj"
 SCHEME="Nook"
 CONFIGURATION="Release"
 BUILD_DIR="build"
@@ -33,6 +34,7 @@ rm -rf "$BUILD_DIR" "${APP_NAME}.app" "${APP_NAME}.dmg"
 # Build without code signing
 echo "→ Building ${APP_NAME}.app (${CONFIGURATION})..."
 xcodebuild \
+  -project "$PROJECT" \
   -scheme "$SCHEME" \
   -configuration "$CONFIGURATION" \
   "${ARCH_FLAGS[@]}" \
